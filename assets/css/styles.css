@@ -26,7 +26,7 @@ pre {
   padding-top: 0em;
   padding-bottom: 0em;
   margin-bottom: 1.66667em;
-  margin-left: 1.66667em;
+  padding: 0 3.33333em;
   white-space: pre-wrap;
   word-wrap: break-word;
   page-break-inside: avoid;
@@ -74,8 +74,8 @@ h1 + p {
 
 /* line 47, ../sass/styles.sass */
 h2 {
-  font-size: 1.6em;
-  line-height: 2.08333em;
+  font-size: 1.7em;
+  line-height: 1.96078em;
   color: #111111;
 }
 

