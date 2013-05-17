@@ -1,0 +1,495 @@
+diff --git a/RAILS_VERSION b/RAILS_VERSION
+index f15386a..17ce918 100644
+--- a/RAILS_VERSION
++++ b/RAILS_VERSION
+@@ -1 +1 @@
+-3.2.10
++3.2.11
+diff --git a/actionmailer/lib/action_mailer/version.rb b/actionmailer/lib/action_mailer/version.rb
+index 87ebf63..695ea00 100644
+--- a/actionmailer/lib/action_mailer/version.rb
++++ b/actionmailer/lib/action_mailer/version.rb
+@@ -2,7 +2,7 @@ module ActionMailer
+   module VERSION #:nodoc:
+     MAJOR = 3
+     MINOR = 2
+-    TINY  = 10
++    TINY  = 11
+     PRE   = nil
+ 
+     STRING = [MAJOR, MINOR, TINY, PRE].compact.join('.')
+diff --git a/actionpack/CHANGELOG.md b/actionpack/CHANGELOG.md
+index 4d7035e..d07ef73 100644
+--- a/actionpack/CHANGELOG.md
++++ b/actionpack/CHANGELOG.md
+@@ -1,3 +1,7 @@
++## Rails 3.2.11 ##
++
++* Strip nils from collections on JSON and XML posts. [CVE-2013-0155]
++
+ ## Rails 3.2.10 ##
+ 
+ ## Rails 3.2.9 (Nov 12, 2012) ##
+diff --git a/actionpack/lib/action_dispatch/http/request.rb b/actionpack/lib/action_dispatch/http/request.rb
+index afc0496..dea8e86 100644
+--- a/actionpack/lib/action_dispatch/http/request.rb
++++ b/actionpack/lib/action_dispatch/http/request.rb
+@@ -247,18 +247,14 @@ module ActionDispatch
+       LOCALHOST.any? { |local_ip| local_ip === remote_addr && local_ip === remote_ip }
+     end
+ 
+-    protected
+-
+     # Remove nils from the params hash
+     def deep_munge(hash)
+-      keys = hash.keys.find_all { |k| hash[k] == [nil] }
+-      keys.each { |k| hash[k] = nil }
+-
+-      hash.each_value do |v|
++      hash.each do |k, v|
+         case v
+         when Array
+           v.grep(Hash) { |x| deep_munge(x) }
+           v.compact!
++          hash[k] = nil if v.empty?
+         when Hash
+           deep_munge(v)
+         end
+@@ -267,6 +263,8 @@ module ActionDispatch
+       hash
+     end
+ 
++    protected
++
+     def parse_query(qs)
+       deep_munge(super)
+     end
+diff --git a/actionpack/lib/action_dispatch/middleware/params_parser.rb b/actionpack/lib/action_dispatch/middleware/params_parser.rb
+index 6ded9db..ac72689 100644
+--- a/actionpack/lib/action_dispatch/middleware/params_parser.rb
++++ b/actionpack/lib/action_dispatch/middleware/params_parser.rb
+@@ -38,13 +38,13 @@ module ActionDispatch
+         when Proc
+           strategy.call(request.raw_post)
+         when :xml_simple, :xml_node
+-          data = Hash.from_xml(request.body.read) || {}
++          data = request.deep_munge(Hash.from_xml(request.body.read) || {})
+           request.body.rewind if request.body.respond_to?(:rewind)
+           data.with_indifferent_access
+         when :yaml
+           YAML.load(request.raw_post)
+         when :json
+-          data = ActiveSupport::JSON.decode(request.body)
++          data = request.deep_munge ActiveSupport::JSON.decode(request.body)
+           request.body.rewind if request.body.respond_to?(:rewind)
+           data = {:_json => data} unless data.is_a?(Hash)
+           data.with_indifferent_access
+diff --git a/actionpack/lib/action_dispatch/middleware/session/abstract_store.rb b/actionpack/lib/action_dispatch/middleware/session/abstract_store.rb
+index c04fee2..cb6d98f 100644
+--- a/actionpack/lib/action_dispatch/middleware/session/abstract_store.rb
++++ b/actionpack/lib/action_dispatch/middleware/session/abstract_store.rb
+@@ -25,6 +25,8 @@ module ActionDispatch
+     module Compatibility
+       def initialize(app, options = {})
+         options[:key] ||= '_session_id'
++        # FIXME Rack's secret is not being used
++        options[:secret] ||= SecureRandom.hex(30)
+         super
+       end
+ 
+diff --git a/actionpack/lib/action_pack/version.rb b/actionpack/lib/action_pack/version.rb
+index ad2546a..1083237 100644
+--- a/actionpack/lib/action_pack/version.rb
++++ b/actionpack/lib/action_pack/version.rb
+@@ -2,7 +2,7 @@ module ActionPack
+   module VERSION #:nodoc:
+     MAJOR = 3
+     MINOR = 2
+-    TINY  = 10
++    TINY  = 11
+     PRE   = nil
+ 
+     STRING = [MAJOR, MINOR, TINY, PRE].compact.join('.')
+diff --git a/actionpack/test/controller/webservice_test.rb b/actionpack/test/controller/webservice_test.rb
+index ae8588c..13b6f4f 100644
+--- a/actionpack/test/controller/webservice_test.rb
++++ b/actionpack/test/controller/webservice_test.rb
+@@ -118,6 +118,19 @@ class WebServiceTest < ActionDispatch::IntegrationTest
+     end
+   end
+ 
++  def test_post_xml_using_a_disallowed_type_attribute
++    $stderr = StringIO.new
++    with_test_route_set do
++      post '/', '<foo type="symbol">value</foo>', 'CONTENT_TYPE' => 'application/xml'
++      assert_response 500
++
++      post '/', '<foo type="yaml">value</foo>', 'CONTENT_TYPE' => 'application/xml'
++      assert_response 500
++    end
++  ensure
++    $stderr = STDERR
++  end
++
+   def test_register_and_use_yaml
+     with_test_route_set do
+       with_params_parsers Mime::YAML => Proc.new { |d| YAML.load(d) } do
+diff --git a/actionpack/test/dispatch/request/json_params_parsing_test.rb b/actionpack/test/dispatch/request/json_params_parsing_test.rb
+index ad44b4b..fbf2ce1 100644
+--- a/actionpack/test/dispatch/request/json_params_parsing_test.rb
++++ b/actionpack/test/dispatch/request/json_params_parsing_test.rb
+@@ -30,6 +30,21 @@ class JsonParamsParsingTest < ActionDispatch::IntegrationTest
+     )
+   end
+ 
++  test "nils are stripped from collections" do
++    assert_parses(
++      {"person" => nil},
++      "{\"person\":[null]}", { 'CONTENT_TYPE' => 'application/json' }
++    )
++    assert_parses(
++      {"person" => ['foo']},
++      "{\"person\":[\"foo\",null]}", { 'CONTENT_TYPE' => 'application/json' }
++    )
++    assert_parses(
++      {"person" => nil},
++      "{\"person\":[null, null]}", { 'CONTENT_TYPE' => 'application/json' }
++    )
++  end
++
+   test "logs error if parsing unsuccessful" do
+     with_test_routing do
+       output = StringIO.new
+diff --git a/actionpack/test/dispatch/request/xml_params_parsing_test.rb b/actionpack/test/dispatch/request/xml_params_parsing_test.rb
+index 0984f00..cadafa7 100644
+--- a/actionpack/test/dispatch/request/xml_params_parsing_test.rb
++++ b/actionpack/test/dispatch/request/xml_params_parsing_test.rb
+@@ -30,6 +30,23 @@ class XmlParamsParsingTest < ActionDispatch::IntegrationTest
+     assert_equal "<ok>bar</ok>", resp.body
+   end
+ 
++  def assert_parses(expected, xml)
++    with_test_routing do
++      post "/parse", xml, default_headers
++      assert_response :ok
++      assert_equal(expected, TestController.last_request_parameters)
++    end
++  end
++
++  test "nils are stripped from collections" do
++    assert_parses(
++      {"hash" => { "person" => nil} },
++      "<hash><person type=\"array\"><person nil=\"true\"/></person></hash>")
++    assert_parses(
++      {"hash" => { "person" => ['foo']} },
++      "<hash><person type=\"array\"><person>foo</person><person nil=\"true\"/></person>\n</hash>")
++  end
++
+   test "parses hash params" do
+     with_test_routing do
+       xml = "<person><name>David</name></person>"
+diff --git a/activemodel/lib/active_model/version.rb b/activemodel/lib/active_model/version.rb
+index 1064e9a..51a678d 100644
+--- a/activemodel/lib/active_model/version.rb
++++ b/activemodel/lib/active_model/version.rb
+@@ -2,7 +2,7 @@ module ActiveModel
+   module VERSION #:nodoc:
+     MAJOR = 3
+     MINOR = 2
+-    TINY  = 10
++    TINY  = 11
+     PRE   = nil
+ 
+     STRING = [MAJOR, MINOR, TINY, PRE].compact.join('.')
+diff --git a/activerecord/CHANGELOG.md b/activerecord/CHANGELOG.md
+index bd8a0bc..6be0c27 100644
+--- a/activerecord/CHANGELOG.md
++++ b/activerecord/CHANGELOG.md
+@@ -1,3 +1,7 @@
++## Rails 3.2.11 ##
++
++*   Fix querying with an empty hash *Damien Mathieu* [CVE-2013-0155]
++
+ ## Rails 3.2.10 ##
+ 
+ *   CVE-2012-5664 options hashes should only be extracted if there are extra
+diff --git a/activerecord/lib/active_record/relation/predicate_builder.rb b/activerecord/lib/active_record/relation/predicate_builder.rb
+index 6b118b4..b31fdfd 100644
+--- a/activerecord/lib/active_record/relation/predicate_builder.rb
++++ b/activerecord/lib/active_record/relation/predicate_builder.rb
+@@ -6,7 +6,12 @@ module ActiveRecord
+ 
+         if allow_table_name && value.is_a?(Hash)
+           table = Arel::Table.new(column, engine)
+-          build_from_hash(engine, value, table, false)
++
++          if value.empty?
++            '1 = 2'
++          else
++            build_from_hash(engine, value, table, false)
++          end
+         else
+           column = column.to_s
+ 
+diff --git a/activerecord/lib/active_record/version.rb b/activerecord/lib/active_record/version.rb
+index 36266e9..ff9fa27 100644
+--- a/activerecord/lib/active_record/version.rb
++++ b/activerecord/lib/active_record/version.rb
+@@ -2,7 +2,7 @@ module ActiveRecord
+   module VERSION #:nodoc:
+     MAJOR = 3
+     MINOR = 2
+-    TINY  = 10
++    TINY  = 11
+     PRE   = nil
+ 
+     STRING = [MAJOR, MINOR, TINY, PRE].compact.join('.')
+diff --git a/activerecord/test/cases/relation/where_test.rb b/activerecord/test/cases/relation/where_test.rb
+index b9eef1d..8015833 100644
+--- a/activerecord/test/cases/relation/where_test.rb
++++ b/activerecord/test/cases/relation/where_test.rb
+@@ -1,9 +1,11 @@
+ require "cases/helper"
+ require 'models/post'
++require 'models/comment'
++require 'models/edge'
+ 
+ module ActiveRecord
+   class WhereTest < ActiveRecord::TestCase
+-    fixtures :posts
++    fixtures :posts, :edges
+ 
+     def test_where_error
+       assert_raises(ActiveRecord::StatementInvalid) do
+@@ -21,5 +23,17 @@ module ActiveRecord
+       post = Post.first
+       assert_equal post, Post.where(:posts => { 'id' => post.id }).first
+     end
++
++    def test_where_with_table_name_and_empty_hash
++      assert_equal 0, Post.where(:posts => {}).count
++    end
++
++    def test_where_with_table_name_and_empty_array
++      assert_equal 0, Post.where(:id => []).count
++    end
++
++    def test_where_with_empty_hash_and_no_foreign_key
++      assert_equal 0, Edge.where(:sink => {}).count
++    end
+   end
+ end
+diff --git a/activeresource/lib/active_resource/version.rb b/activeresource/lib/active_resource/version.rb
+index adbcaaa..500da6c 100644
+--- a/activeresource/lib/active_resource/version.rb
++++ b/activeresource/lib/active_resource/version.rb
+@@ -2,7 +2,7 @@ module ActiveResource
+   module VERSION #:nodoc:
+     MAJOR = 3
+     MINOR = 2
+-    TINY  = 10
++    TINY  = 11
+     PRE   = nil
+ 
+     STRING = [MAJOR, MINOR, TINY, PRE].compact.join('.')
+diff --git a/activesupport/CHANGELOG.md b/activesupport/CHANGELOG.md
+index 7faf55b..ec19805 100644
+--- a/activesupport/CHANGELOG.md
++++ b/activesupport/CHANGELOG.md
+@@ -1,3 +1,12 @@
++## Rails 3.2.10 (Jan 8, 2012) ##
++
++*   Hash.from_xml raises when it encounters type="symbol" or type="yaml".
++    Use Hash.from_trusted_xml to parse this XML.
++
++    CVE-2013-0156
++
++    *Jeremy Kemper*
++
+ ## Rails 3.2.9 (Nov 12, 2012) ##
+ 
+ *   Add logger.push_tags and .pop_tags to complement logger.tagged:
+diff --git a/activesupport/lib/active_support/core_ext/hash/conversions.rb b/activesupport/lib/active_support/core_ext/hash/conversions.rb
+index 5f07bb4..b820a16 100644
+--- a/activesupport/lib/active_support/core_ext/hash/conversions.rb
++++ b/activesupport/lib/active_support/core_ext/hash/conversions.rb
+@@ -85,15 +85,33 @@ class Hash
+     end
+   end
+ 
++  class DisallowedType < StandardError #:nodoc:
++    def initialize(type)
++      super "Disallowed type attribute: #{type.inspect}"
++    end
++  end
++
++  DISALLOWED_XML_TYPES = %w(symbol yaml)
++
+   class << self
+-    def from_xml(xml)
+-      typecast_xml_value(unrename_keys(ActiveSupport::XmlMini.parse(xml)))
++    def from_xml(xml, disallowed_types = nil)
++      typecast_xml_value(unrename_keys(ActiveSupport::XmlMini.parse(xml)), disallowed_types)
++    end
++
++    def from_trusted_xml(xml)
++      from_xml xml, []
+     end
+ 
+     private
+-      def typecast_xml_value(value)
++      def typecast_xml_value(value, disallowed_types = nil)
++        disallowed_types ||= DISALLOWED_XML_TYPES
++
+         case value.class.to_s
+           when 'Hash'
++            if value.include?('type') && !value['type'].is_a?(Hash) && disallowed_types.include?(value['type'])
++              raise DisallowedType, value['type']
++            end
++
+             if value['type'] == 'array'
+               _, entries = Array.wrap(value.detect { |k,v| not v.is_a?(String) })
+               if entries.nil? || (c = value['__content__'] && c.blank?)
+@@ -101,9 +119,9 @@ class Hash
+               else
+                 case entries.class.to_s   # something weird with classes not matching here.  maybe singleton methods breaking is_a?
+                 when "Array"
+-                  entries.collect { |v| typecast_xml_value(v) }
++                  entries.collect { |v| typecast_xml_value(v, disallowed_types) }
+                 when "Hash"
+-                  [typecast_xml_value(entries)]
++                  [typecast_xml_value(entries, disallowed_types)]
+                 else
+                   raise "can't typecast #{entries.inspect}"
+                 end
+@@ -127,14 +145,14 @@ class Hash
+             elsif value['type'] && value.size == 1 && !value['type'].is_a?(::Hash)
+               nil
+             else
+-              xml_value = Hash[value.map { |k,v| [k, typecast_xml_value(v)] }]
++              xml_value = Hash[value.map { |k,v| [k, typecast_xml_value(v, disallowed_types)] }]
+ 
+               # Turn { :files => { :file => #<StringIO> } into { :files => #<StringIO> } so it is compatible with
+               # how multipart uploaded files from HTML appear
+               xml_value["file"].is_a?(StringIO) ? xml_value["file"] : xml_value
+             end
+           when 'Array'
+-            value.map! { |i| typecast_xml_value(i) }
++            value.map! { |i| typecast_xml_value(i, disallowed_types) }
+             value.length > 1 ? value : value.first
+           when 'String'
+             value
+diff --git a/activesupport/lib/active_support/version.rb b/activesupport/lib/active_support/version.rb
+index 94c22b0..e928403 100644
+--- a/activesupport/lib/active_support/version.rb
++++ b/activesupport/lib/active_support/version.rb
+@@ -2,7 +2,7 @@ module ActiveSupport
+   module VERSION #:nodoc:
+     MAJOR = 3
+     MINOR = 2
+-    TINY  = 10
++    TINY  = 11
+     PRE   = nil
+ 
+     STRING = [MAJOR, MINOR, TINY, PRE].compact.join('.')
+diff --git a/activesupport/test/core_ext/hash_ext_test.rb b/activesupport/test/core_ext/hash_ext_test.rb
+index b5eb049..c3a5954 100644
+--- a/activesupport/test/core_ext/hash_ext_test.rb
++++ b/activesupport/test/core_ext/hash_ext_test.rb
+@@ -733,12 +733,10 @@ class HashToXmlTest < Test::Unit::TestCase
+         <replies-close-in type="integer">2592000000</replies-close-in>
+         <written-on type="date">2003-07-16</written-on>
+         <viewed-at type="datetime">2003-07-16T09:28:00+0000</viewed-at>
+-        <content type="yaml">--- \n1: should be an integer\n:message: Have a nice day\narray: \n- should-have-dashes: true\n  should_have_underscores: true\n</content>
+         <author-email-address>david@loudthinking.com</author-email-address>
+         <parent-id></parent-id>
+         <ad-revenue type="decimal">1.5</ad-revenue>
+         <optimum-viewing-angle type="float">135</optimum-viewing-angle>
+-        <resident type="symbol">yes</resident>
+       </topic>
+     EOT
+ 
+@@ -751,12 +749,10 @@ class HashToXmlTest < Test::Unit::TestCase
+       :replies_close_in => 2592000000,
+       :written_on => Date.new(2003, 7, 16),
+       :viewed_at => Time.utc(2003, 7, 16, 9, 28),
+-      :content => { :message => "Have a nice day", 1 => "should be an integer", "array" => [{ "should-have-dashes" => true, "should_have_underscores" => true }] },
+       :author_email_address => "david@loudthinking.com",
+       :parent_id => nil,
+       :ad_revenue => BigDecimal("1.50"),
+       :optimum_viewing_angle => 135.0,
+-      :resident => :yes
+     }.stringify_keys
+ 
+     assert_equal expected_topic_hash, Hash.from_xml(topic_xml)["topic"]
+@@ -770,7 +766,6 @@ class HashToXmlTest < Test::Unit::TestCase
+         <approved type="boolean"></approved>
+         <written-on type="date"></written-on>
+         <viewed-at type="datetime"></viewed-at>
+-        <content type="yaml"></content>
+         <parent-id></parent-id>
+       </topic>
+     EOT
+@@ -781,7 +776,6 @@ class HashToXmlTest < Test::Unit::TestCase
+       :approved   => nil,
+       :written_on => nil,
+       :viewed_at  => nil,
+-      :content    => nil,
+       :parent_id  => nil
+     }.stringify_keys
+ 
+@@ -1008,6 +1002,28 @@ class HashToXmlTest < Test::Unit::TestCase
+     assert_equal expected_product_hash, Hash.from_xml(product_xml)["product"]
+   end
+ 
++  def test_from_xml_raises_on_disallowed_type_attributes
++    assert_raise Hash::DisallowedType do
++      Hash.from_xml '<product><name type="foo">value</name></product>', %w(foo)
++    end
++  end
++
++  def test_from_xml_disallows_symbol_and_yaml_types_by_default
++    assert_raise Hash::DisallowedType do
++      Hash.from_xml '<product><name type="symbol">value</name></product>'
++    end
++
++    assert_raise Hash::DisallowedType do
++      Hash.from_xml '<product><name type="yaml">value</name></product>'
++    end
++  end
++
++  def test_from_trusted_xml_allows_symbol_and_yaml_types
++    expected = { 'product' => { 'name' => :value }}
++    assert_equal expected, Hash.from_trusted_xml('<product><name type="symbol">value</name></product>')
++    assert_equal expected, Hash.from_trusted_xml('<product><name type="yaml">:value</name></product>')
++  end
++
+   def test_should_use_default_value_for_unknown_key
+     hash_wia = HashWithIndifferentAccess.new(3)
+     assert_equal 3, hash_wia[:new_key]
+diff --git a/railties/lib/rails/version.rb b/railties/lib/rails/version.rb
+index 958f248..352ecf4 100644
+--- a/railties/lib/rails/version.rb
++++ b/railties/lib/rails/version.rb
+@@ -2,7 +2,7 @@ module Rails
+   module VERSION #:nodoc:
+     MAJOR = 3
+     MINOR = 2
+-    TINY  = 10
++    TINY  = 11
+     PRE   = nil
+ 
+     STRING = [MAJOR, MINOR, TINY, PRE].compact.join('.')
+diff --git a/version.rb b/version.rb
+index 958f248..352ecf4 100644
+--- a/version.rb
++++ b/version.rb
+@@ -2,7 +2,7 @@ module Rails
+   module VERSION #:nodoc:
+     MAJOR = 3
+     MINOR = 2
+-    TINY  = 10
++    TINY  = 11
+     PRE   = nil
+ 
+     STRING = [MAJOR, MINOR, TINY, PRE].compact.join('.')
