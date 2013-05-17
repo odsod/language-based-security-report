@@ -1,0 +1,86 @@
+/* line 61, ../../../../../../../../.rbenv/versions/1.9.3-p392/lib/ruby/gems/1.9.1/gems/compass-0.12.2/frameworks/compass/stylesheets/compass/typography/_vertical_rhythm.scss */
+* html {
+  font-size: 100%;
+}
+
+/* line 64, ../../../../../../../../.rbenv/versions/1.9.3-p392/lib/ruby/gems/1.9.1/gems/compass-0.12.2/frameworks/compass/stylesheets/compass/typography/_vertical_rhythm.scss */
+html {
+  font-size: 16px;
+  line-height: 1.5em;
+}
+
+/* line 8, ../sass/styles.sass */
+body {
+  font-family: "Open Sans", sans-serif;
+  font-weight: 100;
+  text-align: justify;
+  color: black;
+  color: #222222;
+}
+
+/* line 15, ../sass/styles.sass */
+pre {
+  font-size: 0.8em;
+  line-height: 0.9375em;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  page-break-inside: avoid;
+}
+
+/* line 21, ../sass/styles.sass */
+blockquote {
+  font-style: italic;
+}
+/* line 23, ../sass/styles.sass */
+blockquote + p {
+  text-align: right;
+  font-weight: 500;
+}
+
+/* line 27, ../sass/styles.sass */
+h1, h2 {
+  font-weight: 700;
+}
+
+/* line 30, ../sass/styles.sass */
+h3, h4, h5 {
+  font-weight: 500;
+}
+
+/* line 33, ../sass/styles.sass */
+h1 {
+  font-size: 2em;
+  line-height: 1.5em;
+  margin-top: 7.5em;
+  text-align: center;
+}
+/* line 37, ../sass/styles.sass */
+h1 + p {
+  text-align: center;
+  page-break-after: always;
+}
+
+/* line 41, ../sass/styles.sass */
+h2 {
+  font-size: 1.6em;
+  line-height: 1.875em;
+  color: #111111;
+}
+
+/* line 45, ../sass/styles.sass */
+h3 {
+  font-size: 1.4em;
+  line-height: 2.14286em;
+  color: #111111;
+}
+
+/* line 49, ../sass/styles.sass */
+h4 {
+  font-size: 1.1em;
+  line-height: 1.36364em;
+  margin-top: 1.5em;
+  padding-top: 0em;
+  padding-bottom: 0em;
+  margin-bottom: 0.75em;
+  color: #222222;
+}
