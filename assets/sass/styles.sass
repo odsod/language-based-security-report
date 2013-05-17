@@ -1,7 +1,7 @@
 @import compass/typography/vertical_rhythm
 
-$base-font-size: 16px
-$base-line-height: 24px
+$base-font-size: 12px
+$base-line-height: 20px
 
 +establish-baseline
 
@@ -14,9 +14,15 @@ body
 
 pre
   +adjust-font-size-to($base-font-size*0.8, .5)
+  +rhythm(1, 0, 0, 1)
+  margin-left: rhythm(1)
   white-space: pre-wrap
   word-wrap: break-word
   page-break-inside: avoid
+
+code
+  +adjust-font-size-to($base-font-size*0.9)
+  font-family: "DejaVu Sans Mono", monospace
 
 blockquote
   font-style: italic

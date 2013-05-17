@@ -154,11 +154,11 @@ We will now make sense of it by picking it apart and analyzing the individual co
 
 First off, we see that we are dealing with a POST-request, with the exploit payload contained in the body. The payload is meant to be parsed as XML, which is the reason for the content-type header:
 
-Content-Type: text/xml
+    Content-Type: text/xml
 
 By default, Rails does not handle POST-requests unless explicitly told so on a specific route. This means that our payload will not be parsed unless we can find a route on the server that accepts POST requests. Although this might not be hard on most servers, we can make it even easier by simply overriding the POST request to be handled as a GET request. This is the reason for the header:
 
-X-HTTP-Method-Override: GET
+    X-HTTP-Method-Override: GET
 
 Our payload in the request body is an XML-document consisting of one `<exploit>` tag. By adding a type property, we can make Rails delegate the content of this tag tag to its YAML-parser: 
 
@@ -214,7 +214,7 @@ If we look at the source of this parameter parser, we see that the vulnerable ve
           Mime::JSON => :json
     }
 
-And when the Content-Type of the header is set to XML, the Rails XML parser will be called to parse the body of the request:
+And when the `Content-Type` of the header is set to XML, the Rails XML parser will be called to parse the body of the request:
 
     mime_type = content_type_from_legacy_post_data_format_header(env) ||
       request.content_mime_type
