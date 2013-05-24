@@ -218,38 +218,6 @@ done on later patches to avoid it, while also considering one of Ruby on Rails
 leading design paradigm “convention over configuration” and its benefits and
 drawbacks.
 
-### Method
-
-To examine the exploit by identifying what makes it possible and what have been
-done on later patches to avoid it, while also considering one of Ruby on Rails
-leading design paradigm “convention over configuration” and its benefits and
-drawbacks.
-
-In order to examine the exploit in detail one will need an environment which is
-vulnerable to the exploit. A proof of concept exploit can then be set up to
-show what is actually possible to do on the server. Now follows a more detailed
-plan on how a vulnerable system will be configured and analyzed.
-
-#### Analyze the exploit
-
-After the proof of concept exploit is constructed, the different parts of it
-will be analyzed in order to receive deeper knowledge on the subject.
-
-#### Analyze the vulnerable code
-
-The vulnerable code will be analyzed and ultimately answer the question on how
-the exploit is possible. This is a natural step after going through the proof
-of concept exploit since the it is heavily dependent on the code it exploits.
-
-#### Analyze the security patches
-
-To answer the question on what have been done to avoid this exploit some of the
-security patches will be analysed. By running the command ‘git diff v3.2.10
-v3.2.11’ one can identify all parts of the code that have been changed between
-two versions, in this case 3.2.10 and 3.2.11. This will help in finding out
-what the security team of RoR have done to stop the attack and maybe also if
-they have tracked down similar issues.
-
 Description of work
 -------------------
 
