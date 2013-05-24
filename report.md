@@ -833,13 +833,13 @@ It is however a fact that this type of deserialization provides a level of
 convenience and language-based expressiveness to the programmer that is not
 possible in a language with more restricted types.
 
-[1]:https://groups.google.com/forum/#!topic/rubyonrails-security/61bkgvnSGTQ/discussion
-[2]:http://ronin-ruby.github.io/blog/2013/01/09/rails-pocs.html
-[3]:http://www.kalzumeus.com/2013/01/31/what-the-rails-security-issue-means-for-your-startup/
-[4]:http://blog.codeclimate.com/blog/2013/01/10/rails-remote-code-execution-vulnerability-explained/
-[5]:http://rubysource.com/anatomy-of-an-exploit-an-in-depth-look-at-the-rails-yaml-vulnerability/
-[6]:http://github.com/popular/starred
-[7]:https://community.rapid7.com/community/metasploit/blog/2013/01/09/serialization-mischief-in-ruby-land-cve-2013-0156
+[1]: https://groups.google.com/forum/#!topic/rubyonrails-security/61bkgvnSGTQ/discussion "https://groups.google.com/forum/#!topic/rubyonrails-security/61bkgvnSGTQ/discussion"
+[2]: http://ronin-ruby.github.io/blog/2013/01/09/rails-pocs.html "http://ronin-ruby.github.io/blog/2013/01/09/rails-pocs.html"
+[3]: http://www.kalzumeus.com/2013/01/31/what-the-rails-security-issue-means-for-your-startup/ "http://www.kalzumeus.com/2013/01/31/what-the-rails-security-issue-means-for-your-startup/"
+[4]: http://blog.codeclimate.com/blog/2013/01/10/rails-remote-code-execution-vulnerability-explained/ "http://blog.codeclimate.com/blog/2013/01/10/rails-remote-code-execution-vulnerability-explained/"
+[5]: http://rubysource.com/anatomy-of-an-exploit-an-in-depth-look-at-the-rails-yaml-vulnerability/ "http://rubysource.com/anatomy-of-an-exploit-an-in-depth-look-at-the-rails-yaml-vulnerability/"
+[6]: http://github.com/popular/starred "http://github.com/popular/starred"
+[7]: https://community.rapid7.com/community/metasploit/blog/2013/01/09/serialization-mischief-in-ruby-land-cve-2013-0156 "https://community.rapid7.com/community/metasploit/blog/2013/01/09/serialization-mischief-in-ruby-land-cve-2013-0156"
 
 Appendix
 --------
