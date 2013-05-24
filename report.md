@@ -771,12 +771,12 @@ been mitigated. Then, only those who had explicitly enabled `XML` parsing would
 be vulnerable, but instead basically every Rails application on the internet
 was vulnerable.  
 
-The idiomatic way of preventing this would have been to disable the `XML` parser
-altogether by default, but the Rails developers instead chose to just disallow
-the type="yaml" attribute on `XML` documents. This would count as a compromise
-between "Convention over configuration" and "Secure by default", which will
-probably be a common balancing act in the development of Ruby on Rails in the
-future.
+The idiomatic way of preventing this would have been to disable the `XML`
+parser altogether by default, but the Rails developers instead chose to just
+disallow the `type="yaml"` attribute on `XML` documents. This would count as a
+compromise between "Convention over configuration" and "Secure by default",
+which will probably be a common balancing act in the development of Ruby on
+Rails in the future.
 
 #### Principle of least privilege
 
@@ -792,12 +792,30 @@ including file system permissions limited to the confines of the server files.
 
 ### Conclusions
 
+#### The future of Ruby as a web language
+
 Taking the analysis into account, a conclusion has been made that Ruby on Rails
-has several security issues regarding its design choices. To survive in the future, Ruby on Rails will need to make sure that its security issues are kept at a low severity level, otherwise developers will start looking for alternatives.
+has several security issues regarding its design choices. To survive in the
+future, Ruby on Rails will need to make sure that its security issues are kept
+at a low severity level, otherwise developers will start looking for
+alternatives.
 
-#### Design principles
+When taking into account that almost every old version of the framework is
+vulnerable, it seems that this vulnerability has been able to pass by unnoticed
+for quite some time. This brings us to wonder if there are more such
+ vulnerabilities waiting to be discovered.
 
-When it comes to design principles we have seen that what principles you choose to follow may have impact on the system vulnerability as a whole. The "convenience over configuration" seem to have opened security holes and as an effect, "security by default" is now considered also. The principle of least privilege can help in order to constrain the security issues, but this is more in the range of OS-based security. What RoR can do however, is to apply security principles more often.
+We see a general problem with using a dynamic language, such as Ruby, for web
+programming. The problem is that web applications will always handle large
+amounts of untrusted and potentially unsafe data. Ruby provides little to no
+mechanisms for reasoning about the safety of processing this data.
+
+Contrast this to a language with a more powerful type system. On one hand, it
+does put certain constraints on how applications can be designed and
+structured. This impacts development time, and also the development costs in
+the short run. On the other hand, it provides more tools and structure for
+assuring that unexpected side effects as a result of handling unsafe data do
+not occur, which may heavily reduce costs in the long run.
 
 #### Added security from type safety
 
@@ -807,9 +825,9 @@ deserialized data be known at runtime, and those that do not.
 
 Languages that that do enforce types of deserialized data to be explicitly
 speciﬁed can be argued to be more secure, since our exploit in question would
-not have been possible. Recall that the class `NamedRouteCollection` depended on the
-invariant that it must never handle untrusted data. By not specifying the type
-of the deserialized data, this invariant was broken.
+not have been possible. Recall that the class `NamedRouteCollection` depended
+on the invariant that it must never handle untrusted data. By not specifying
+the type of the deserialized data, this invariant was broken.
 
 It is however a fact that this type of deserialization provides a level of
 convenience and language-based expressiveness to the programmer that is not
