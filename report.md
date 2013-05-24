@@ -679,9 +679,17 @@ parsing of XML documents.
 Conclusions
 -----------
 
+Taking the analysis into account, a conclusion has been made that Ruby on Rails has several security issues regarding its design choices. 
+
+### Risk analysis
+
+We have seen that Ruby and Rails are very high level languages. It may be possible that in these languages, security flaws can emerge that are not possible in languages with more restrictive type systems. This weighs into the risk of choosing to implement a web application in Rails.
+
+Maybe even the remote possibility of failure is not an option, and the cost of the increased development time is motivated when choosing another language and another framework. On the other hand, if money and development time is an issue, the inherent security threats that may lie dormant in a Rails application due to the dynamic nature of Ruby may be a necessary tradeoff in order to meet a business goal. We see that this is the case by looking at the number of start ups that choose to develop their web applications in Ruby on Rails.
+
 ### Convention over configuration
 
-Ruby on Rails is a very convenient framework to work in. The system has been designed such that a developer shouldn't need to make unnecessary configurations in order to get a functioning server. The ease of use have boosted the platform's popularity since it allows the developer to stay productive, but to what cost? If "convention over configuration" was to be abandoned, then would the users abandon Ruby on Rails? When taking these questions into consideration, one might also question if there would be any users left if the platform is considered insecure.
+Ruby on Rails is a very convenient framework to work in. The system has been designed such that a developer shouldn't need to make unnecessary configurations in order to get a functioning server. The ease of use have boosted the platform's popularity since it allows the developer to stay productive, but to what cost? If "convention over configuration" was to be abandoned, then would the users abandon Ruby on Rails? When taking these questions into consideration, one might also question if there would be any users left if the platform is considered insecure. This may be why Aaron Pattersson emphasises in his post[^1] that it should now be more "secure by default", after disabling the delegation to the YAML parser from the XMLParser in the default settings.
 
 ### Secure by default 
 
@@ -691,7 +699,23 @@ been mitigated. Then, only those who had explicitly enabled XML parsing would
 be vulnerable, but instead basically every Rails application on the internet
 was vulnerable.  The idiomatic way of preventing this would have been to
 disable the XML parser altogether by default, but the Rails developers instead
-chose to just disallow the type="yaml" attribute on XML documents.
+chose to just disallow the type="yaml" attribute on XML documents. This would count as a compromise between "Convention over configuration" and "Secure by default", which will probably be a common balancing act in the development of Ruby on Rails in the future.
+
+### Principle of least privilege
+
+Our exploit show just how easy it is for a compromising vulnerability to lie dormant in a web application. In our case, the vulnerability allowed arbitrary code execution on the server. Since this code could potentially be system calls, it shows just how important it is to follow the “Principle of least privilege”.
+
+This means that we in our case could run the server under a user account which only has the specific permissions required to run our web application, including file system permissions limited to the confines of the server files.
+
+One potential security issue arising from our exploit is that the arbitrary code executed on the server could potentially result in the server connecting to other servers. This connection could for example be used to spread the exploit to other vulnerable rails servers, but also other malicious purposes. We see that the Ruby language does not really provide us with any means of preventing this behavior in the parser. While parsing YAML, the parser could potentially start executing code with arbitrary side effects.
+
+Contrast this with a language such as Haskell, where side effects are explicit in the type signature of the function being executed. This can be seen as a type of principle of least privilege, a way to limit which types of side effects any given computation can have.
+
+Take for example an XML deserialization function from the library HaXml:
+
+xmlParse :: String -> String -> Document Posn
+
+We see that using this function to parse an xml document could not possibly result in arbitrary code execution with dangerous side effects, since the only way to achieve these types of effects in Haskell is to perform them inside the IO-monad. Since this function computes its value separate from the IO monad, we can draw the conclusion that this parser is inherently safer than the XML parser from RoR. There is a function called ‘unsafeperformIO’ which theoretically could be used inside xmlParse, but this is highly unlikely.
 
 ### Added security from type safety
 
@@ -708,10 +732,6 @@ of the deserialized data, this invariant was broken.
 It is however a fact that this type of deserialization provides a level of
 convenience and language-based expressiveness to the programmer that is not
 possible in a language with more restricted types.
-
-## ?Future of rails or the type of frameworks such as rails?
-### Secure by default
-### Make it simple for the user by default
 
 [^1]:https://groups.google.com/forum/#!topic/rubyonrails-security/61bkgvnSGTQ/discussion
 [^2]:http://ronin-ruby.github.io/blog/2013/01/09/rails-pocs.html
