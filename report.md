@@ -650,6 +650,20 @@ parsing of XML documents.
 Conclusions
 -----------
 
+### Convention over configuration
+
+Ruby on Rails is a very convenient framework to work in. The system has been designed such that a developer shouldn't need to make unnecessary configurations in order to get a functioning server. The ease of use have boosted the platform's popularity since it allows the developer to stay productive, but to what cost? If "convention over configuration" was to be abandoned, then would the users abandon Ruby on Rails? When taking these questions into consideration, one might also question if there would be any users left if the platform is considered insecure.
+
+### Secure by default 
+
+It is a fact that without including a vulnerable XML parser into the
+application middleware by default, the severity of the vulnerability would have
+been mitigated. Then, only those who had explicitly enabled XML parsing would
+be vulnerable, but instead basically every Rails application on the internet
+was vulnerable.  The idiomatic way of preventing this would have been to
+disable the XML parser altogether by default, but the Rails developers instead
+chose to just disallow the type="yaml" attribute on XML documents.
+
 ### Added security from type safety
 
 From our comparison with Haskell, we can draw the following conclusion: there
@@ -665,16 +679,6 @@ of the deserialized data, this invariant was broken.
 It is however a fact that this type of deserialization provides a level of
 convenience and language-based expressiveness to the programmer that is not
 possible in a language with more restricted types.
-
-### Secure by default 
-
-It is a fact that without including a vulnerable XML parser into the
-application middleware by default, the severity of the vulnerability would have
-been mitigated. Then, only those who had explicitly enabled XML parsing would
-be vulnerable, but instead basically every Rails application on the internet
-was vulnerable.  The idiomatic way of preventing this would have been to
-disable the XML parser altogether by default, but the Rails developers instead
-chose to just disallow the type="yaml" attribute on XML documents.
 
 ## ?Future of rails or the type of frameworks such as rails?
 ### Secure by default
