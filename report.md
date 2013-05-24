@@ -263,25 +263,50 @@ Another article on the subject[^2] points out that the version of Ruby needs to
 be higher than `1.9.2`, we will thus use the latest patch of version `1.9.3`,
 which to date is `1.9.3-p392`.
 
-To setup a default application, we create a `Gemfile` which specifies this
-version of rails, and then use the `bundler` gem to install our dependencies:
+To setup a default application, we can use Rubygems to install the most recent
+vulnerable version of the framework:
 
-    # Gemfile
-    source 'https://rubygems.org'
-    gem 'rails', '3.2.10'
+    gem install rails --version 3.2.10
 
-We will use the `bundler` gems `exec` functionality to make sure that we run
-the correct version of the Rails binary:
+Now, we create a default Rails application of the correct version:
 
+    rails _3.2.10_ new vulnerable_app
+
+To make sure that the gem versions of the vulerable application do not conflict
+with more recent versions installed on the system, we will install all bundled
+gems locally within the application:
+
+    cd vulnerable_app
     bundle install --path vendor/bundle
-    bundle exec rails new . --skip-bundle
 
-This leaves us with a default application, which can be run using:
+This leaves us with a fully functional default application, which can be run
+using:
 
     bundle exec rails server
 
 By visiting `localhost:3000`, we now see the welcome page for a default Rails
 application.
+
+In order for our example application to be vulnerable, we have to define at
+least one route. The example page in a default application is served as a
+static file, and does not cause the incoming request to the root URL to be
+routed through the Rails stack.
+
+We therefore open the `routes.rb` file and define that the root URL should be
+routed to the `index` method of the `Application` controller:
+
+    # config/routes.rb
+    :root :to => "application#index"
+
+In our `Application` controller, we define that the index method should just
+render the default welcome page as before:
+
+    # app/controllers/application.rb
+    def index
+      render :file => 'public/index.html'
+    end
+
+We have now constructed a complete, runnable, vulnerable application.
 
 ### Creating a proof of concept exploit
 
@@ -295,6 +320,10 @@ described as `YAML` will be deserialized and evaluated:
     <?xml version="1.0" encoding="UTF-8"?>
     <exploit type="yaml">--- !ruby/object:Time {}
     </exploit>
+
+In order to test this, we need a reliable way of sending exploit payloads to
+our vulnerable application.
+
 
 The fact that we can have `YAML` objects deserialized on the server does not
 however directly imply that we can have arbitrary code executed. However, after
