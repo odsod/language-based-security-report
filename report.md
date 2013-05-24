@@ -570,8 +570,143 @@ We have thus successfully achieved remote code execution.
 
 ### Analysis of security patches
 
+In order to understand how this vulnerability was patched, we look at the
+difference between the vulnerable version 3.2.10 and 3.2.11: 
+
+    git diff v3.2.10 v3.2.11 
+
+Recall how the class method from_xml on the Hash class would delegate parsing
+of the tag content to the YAML parser if the attribute type="yaml" was present.
+This helps us understand the following diff:
+
+    --- a/activesupport/lib/active_support/core_ext/hash/conversions.rb
+    +++ b/activesupport/lib/active_support/core_ext/hash/conversions.rb
+    @@ -85,15 +85,33 @@ class Hash
+    end
+    end
+    + class DisallowedType < StandardError #:nodoc:
+    + def initialize(type)
+    + super "Disallowed type attribute: #{type.inspect}"
+    + end
+    + end
+    +
+    + DISALLOWED_XML_TYPES = %w(symbol yaml)
+    +
+    class << self
+    - def from_xml(xml)
+    - typecast_xml_value(unrename_keys(ActiveSupport::XmlMini.parse(xml)))
+    + def from_xml(xml, disallowed_types = nil)
+    + typecast_xml_value(unrename_keys(ActiveSupport::XmlMini.parse(xml)), disallowed_types)
+    + end
+
+We see that the security path essentially just forbids the presence of the
+type="yaml" attribute, by throwing an error if it is present.
+
+Discussion
+----------
+
+We have so far seen that the parsing vulnerability was the result of a chain of
+smaller vulnerabilities.
+
+First of all, the fact that the frameworks default middleware stack provides
+automatic YAML serialization on all incoming POST requests seems like an
+apparent ﬂaw. When attempting to trace the origin of the YAML delegating code,
+it seems like it only existed in the ﬁrst case to support an edge case where
+Rails model classes needed to be automatically deserialized from incoming
+requests[^8].  
+
+Another vulnerability that allowed the exploit to happen is the class
+NamedRouteCollection, which uses module_eval on untrusted data. It can however
+be argued that the creator of the method using module_eval did not intend for
+it to process untrusted data, and that it is the XML parser that violates this
+precondition by allowing a NamedRouteCollection to be instanced in such an
+arbitrary way.  
+
+It seems that there is no obvious way to assign blame to one part of the
+system. By comparing the Rails parser with the parser of another framework, we
+will shed some light on the issue of how a more secure parser could look like.  
+
+### Comparison with Haskell 
+
+In order to reason about the security implications of the YAML serialization,
+we compare the code from the vulnerable version of Rails with equivalent code
+from another popular web development framework, namely Yesod.  
+
+Yesod is implemented in Haskell, which means that the host language provides a
+siginiﬁcantly higher level of type safety than Ruby. The question is, how would
+this type safety have affected the vulnerability in question?  
+
+The benefit of explicit typing In Ruby, serialization and deserialization can
+very conveniently be done using YAML, it is even so convenient that YAML::load
+can produce an arbitrary object from a string. The type of the object is
+described in the YAML markup contents and need not be known inside the
+deserializing code.
+
+    # The deserialized type can be implicit
+    (IO.read "file").from_yaml 
+    
+In Haskell, serialization and deserialization of arbitrary data can be done
+using the read and show functions. There is however a substantial difference
+from Ruby, which is that deserialization in Haskell requires knowledge of the
+type in advance. This means that in our case, we would have explicitly had to
+say that the deserialization of the XML in our malicious payload was to be
+interpreted as XML.
+
+    -- The deserialized type must be explicit 
+    do contents <- readFile
+      "file" return $ (read contents) :: XML 
+      
+### The benefit of being side-effect free
+
+Haskell also provides another safety aspect through its type system: a possible
+guarantee that a function call is not allowed to result in side effects.  
+
+In Ruby, there is no way of reasoning about whether or not our call to from_xml
+will potentially result in unknown side-effects. For all we know, the XML
+document could contain a YAML document that upon deserialization causes the
+missiles to be launched. Since the from_xml method is untyped, there is no way
+of knowing what might happen when we call it.  
+
+Now consider one of the possible XML deserialization modules available to
+Yesod: HaXml.  HaXml deﬁnes the custom algebraic datatype Document that models
+XML documents, and a function xmlParse that converts Strings into such
+Documents. Look at the type of xmlParse:
+
+    xmlParse :: String -> String -> Document Posn 
+
+In Haskell, we know that the only way of side effects happening is if the
+computation is performed inside the IO-monad. Since xmlParse is not computed
+inside the IO monad, we can be certain that no missiles are launched upon
+parsing of XML documents.  
+
 Conclusions
 -----------
+
+### Added security from type safety
+
+From our comparison with Haskell, we can draw the following conclusion: there
+is a substantial difference between languages which enforces that the types of
+deserialized data be known at runtime, and those that do not.  
+
+Languages that that do enforce types of deserialized data to be explicitly
+speciﬁed can be argued to be more secure, since our exploit in question would
+not have been possible. Recall that class NamedRouteCollection depended on the
+invariant that it must never handle untrusted data. By not specifying the type
+of the deserialized data, this invariant was broken.  
+
+It is however a fact that this type of deserialization provides a level of
+convenience and language-based expressiveness to the programmer that is not
+possible in a language with more restricted types.
+
+### Secure by default 
+
+It is a fact that without including a vulnerable XML parser into the
+application middleware by default, the severity of the vulnerability would have
+been mitigated. Then, only those who had explicitly enabled XML parsing would
+be vulnerable, but instead basically every Rails application on the internet
+was vulnerable.  The idiomatic way of preventing this would have been to
+disable the XML parser altogether by default, but the Rails developers instead
+chose to just disallow the type="yaml" attribute on XML documents.
 
 ## ?Future of rails or the type of frameworks such as rails?
 ### Secure by default
