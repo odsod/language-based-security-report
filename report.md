@@ -153,16 +153,16 @@ It is not uncommon to see code such as this:
       METHOD
     end
 
-## YAML
+## `YAML`
 
-As explained on the official homepage, YAML is a markup language for describing
+As explained on the official homepage, `YAML` is a markup language for describing
 serialized data that is designed to be human-readable.
 
-Among other things, YAML has syntactic support for arrays and hashes, but also
+Among other things, `YAML` has syntactic support for arrays and hashes, but also
 native objects.
 
 YAML is programming language agnostic, but has built in features for describing
-objects. For example, a simple Ruby object can be described in YAML as:
+objects. For example, a simple Ruby object can be described in `YAML` as:
 
     !ruby/object:Foo
     bar: baz
@@ -171,7 +171,7 @@ objects. For example, a simple Ruby object can be described in YAML as:
 This is equivalent to an object of class `Foo`, which has a property `bar` with
 the value `baz`.
 
-Ruby provides tools for deserializing serialized YAML objects during runtime,
+Ruby provides tools for deserializing serialized `YAML` objects during runtime,
 using the method `YAML::load`. Calling `YAML::load` with our `Foo` object would
 result in a Foo object being instantiated:
 
@@ -181,7 +181,7 @@ result in a Foo object being instantiated:
     EOS
     foo.bar == "baz" # true
 
-Since YAML:s syntactic support for data structures and objects matches that of
+Since `YAML`:s syntactic support for data structures and objects matches that of
 Ruby, it has become something of a de facto serialization format within the
 Ruby community.
 
@@ -200,7 +200,7 @@ by Aaron Patterson in January 2013.
 Because of the severity of the problems found he suggests that applications
 running an affected release should be upgraded or fixed immediately. The post
 suggests different fixes depending on RoR version and what modules the
-application uses. One fix is to disable YAML type conversion when parsing XML.
+application uses. One fix is to disable `YAML` type conversion when parsing `XML`.
 
 Many articles have been written on the subject after the initial post such as
 [^3], [^4], [^5]. [^3] talks about how the exploit affects websites using RoR
@@ -238,13 +238,13 @@ vulnerable version of the framework:
 
 Now, we create a default Rails application of the correct version:
 
-    rails _3.2.10_ new vulnerable_app
+    rails _3.2.10_ new vulnerable-app --skip-bundle
 
 To make sure that the gem versions of the vulerable application do not conflict
 with more recent versions installed on the system, we will install all bundled
 gems locally within the application:
 
-    cd vulnerable_app
+    cd vulnerable-app
     bundle install --path vendor/bundle
 
 This leaves us with a fully functional default application, which can be run
@@ -289,28 +289,69 @@ Send a `POST` request with an `XML` body to the server. The `XML` should
 contain one single tag, with a `type=yaml` attribute.  Any `YAML` inside this
 tag will then be deserialized within the context of the application runtime.
 
-As an example, sending the following payload in a `POST`-request to the
-application should result in the `Time` object described as `YAML` being
-deserialized and evaluated:
+#### Verifying the vulnerability
+
+We can test that the above description is accurate by sending a simple payload
+to the application containing nothing but a serialized `Time` object. If the
+server actually deserializes the `YAML` content, the console should log
+the deserialized version of the `Time` object, which should be the current
+time.
+
+This `XML` payload would look as such:
 
     <?xml version="1.0" encoding="UTF-8"?>
     <exploit type="yaml">--- !ruby/object:Time {}
     </exploit>
 
-In order to test this, we need a reliable way of sending exploit payloads to
-our vulnerable application.
+We now need a reliable way of sending exploit payloads to our vulnerable
+application. A very simple way is to construct the `POST` requests manually and
+sending them using the `netcat`-tool.
 
+We thus construct a `POST` request for our example payload:
+
+With our example application still running on port `3000`, we use `netcat` to
+deliver the payload, which we assume resides in a file called `payload_time`: 
+
+    nc localhost 3000 < payload_time
+
+Upon inspection of the application console, we see the following printed:
+
+
+
+
+As it turns out, the rails router does not process `POST` requests by default.
+We can however get around this using a special `HTTP` header:
+
+    X-HTTP-Method-Override: GET
+
+This header makes the router treat the `POST` request as if it were a `GET` request.
+
+Upon sending the payload with the modified header, we get the following output in the console:
+
+
+
+    
+We have thus verified that the described vulnerability exists.
+
+#### Exploiting the vulnerability
 
 The fact that we can have `YAML` objects deserialized on the server does not
-however directly imply that we can have arbitrary code executed. However, after
-knowledge about the vulnerability became public, it seems that its severity
-increased as various security enthusiasts devised increasingly harmful
-exploits, ranging from simple `DoS` attacks, to `SQL` injections and finally
-`RCE`, remote code execution. 
+directly imply that we can have arbitrary code executed. We can, however, have
+objects of arbitrary classes deserialized. 
 
-Examples of these attacks are provided by blogger under the alias *ronin*[^8].
-Here is a simple example of how a DoS attack can be mounted by just by having
-`YAML` deserialized:
+After knowledge about the vulnerability became public, it seems that
+its severity increased as various security enthusiasts devised increasingly
+harmful exploits, ranging from simple `DoS` attacks, to `SQL` injections and
+finally `RCE`, remote code execution. 
+
+The `DoS` attack is similar to the payload containing a `Time` object that we
+have already seen. Only this time, we `POST` a great many Ruby symbols to the
+application. Since symbols are never garbage collected once defined, the
+deserialization of this payload will result in the symbol table overflowing and
+the application crashing.
+
+Examples of this and many other attacks are provided by blogger under the alias
+*ronin*[^8].  Here is a simple example of a payload for a `DoS` attack:
 
     <?xml version="1.0" encoding="UTF-8"?>
     <exploit type="yaml">---:foo1: true
@@ -321,9 +362,7 @@ Here is a simple example of how a DoS attack can be mounted by just by having
       <!-- ... -->
     </exploit>
 
-Since symbols are never garbage collected once defined, the deserialization of
-this payload will result in the symbol table overflowing and the application
-crashing. We see that the possibility of having arbitrary `YAML` deserialized
+We see that the possibility of having arbitrary `YAML` deserialized
 on the server is a clear vulnerability. Still, in order to achieve remote code
 execution, yet another vulnerability must be exploited.
 
@@ -356,12 +395,10 @@ causes:
 
     "Hello world!"
 
-to be printed in the server console.
+to be printed in the server console. From this we can conclude that by
+contstructing payloads containing a serialized `NamedRouteCollection`, we can
+have the application execute arbitrary code.
 
-We can also get around the fact that the payload must be `POST`-ed using a
-special `HTTP` header:
-
-    X-HTTP-Method-Override: GET
 
 Analysis
 --------
@@ -396,30 +433,30 @@ Our final exploit payload looks like this in its entirety:
 
 We will now make sense of it by picking it apart and analyzing the individual components.
 
-First off, we see that we are dealing with a POST-request, with the exploit
-payload contained in the body. The payload is meant to be parsed as XML, which
+First off, we see that we are dealing with a `POST`-request, with the exploit
+payload contained in the body. The payload is meant to be parsed as `XML`, which
 is the reason for the content-type header:
 
     Content-Type: text/xml
 {: .language-http}
 
-By default, Rails does not handle POST-requests unless explicitly told so on a
+By default, Rails does not handle `POST`-requests unless explicitly told so on a
 specific route. This means that our payload will not be parsed unless we can
-find a route on the server that accepts POST requests. Although this might not
+find a route on the server that accepts `POST` requests. Although this might not
 be hard on most servers, we can make it even easier by simply overriding the
 POST request to be handled as a GET request. This is the reason for the header:
 
     X-HTTP-Method-Override: GET
 {: .language-http}
 
-Our payload in the request body is an XML-document consisting of one
+Our payload in the request body is an `XML`-document consisting of one
 `<exploit>` tag. By adding a type property, we can make Rails delegate the
-content of this tag tag to its YAML-parser: 
+content of this tag tag to its `YAML`-parser: 
 
     <exploit type="yaml">
 {: .language-xml}
 
-Next follows the YAML-part of our payload, which in all its entirety describes
+Next follows the `YAML`-part of our payload, which in all its entirety describes
 a serialized instance of the Rails class `NamedRouteCollection`.
 
     --- !ruby/hash:ActionController::Routing::RouteSet::NamedRouteCollection
@@ -483,7 +520,7 @@ version of Rails defines two default parsers:
     }
 {: .language-ruby}
 
-And when the `Content-Type` of the header is set to XML, the Rails XML parser
+And when the `Content-Type` of the header is set to `XML`, the Rails `XML` parser
 will be called to parse the body of the request:
 
     # actionpack/lib/action_dispatch/middleware/params_parser.rb
@@ -503,8 +540,8 @@ XML parser, `XmlMini`.
       typecast_xml_value(unrename_keys(ActiveSupport::XmlMini.parse(xml)))
     end
 
-To understand how the XML parser results in the contents of the `<exploit>` tag
-to be parsed by the YAML parser, we look inside the source of `XmlMini`.
+To understand how the `XML` parser results in the contents of the `<exploit>` tag
+to be parsed by the `YAML` parser, we look inside the source of `XmlMini`.
 
     # activesupport/lib/active_support/xml_mini.rb
     FORMATTING = {
@@ -512,16 +549,16 @@ to be parsed by the YAML parser, we look inside the source of `XmlMini`.
     } unless defined?(FORMATTING)
 {: .language-yaml}
 
-We see that for any XML tag with the `type` attribute set to `yaml`, the XML
+We see that for any `XML` tag with the `type` attribute set to `yaml`, the `XML`
 parser will delegate parsing of the tag body to the `to_yaml` method, which is
 a general method defined on the `Object` class, and thus available on all
 objects.
 
 Once our payload reaches the `to_yaml` method, an object of class
-`NamedRouteCollection` will be instantiated by the YAML parser.
+`NamedRouteCollection` will be instantiated by the `YAML` parser.
 
 Now recall that the `NamedRouteCollection` in our payload had one key-value
-mapping defined. After instantiation, the YAML-parser will attempt to assign
+mapping defined. After instantiation, the `YAML`-parser will attempt to assign
 this key-value mapping by calling the `[]=` method on our object.
 
 By looking at the source code for `NamedRouteCollection` we see that `[]=` is
@@ -576,12 +613,12 @@ We have thus successfully achieved remote code execution.
 ### Analysis of security patches
 
 In order to understand how this vulnerability was patched, we look at the
-difference between the vulnerable version 3.2.10 and 3.2.11: 
+difference between the vulnerable version `3.2.10` and `3.2.11`: 
 
     git diff v3.2.10 v3.2.11 
 
 Recall how the class method from_xml on the Hash class would delegate parsing
-of the tag content to the YAML parser if the attribute type="yaml" was present.
+of the tag content to the `YAML` parser if the attribute `type="yaml"` was present.
 This helps us understand the following diff:
 
     --- a/activesupport/lib/active_support/core_ext/hash/conversions.rb
@@ -605,7 +642,7 @@ This helps us understand the following diff:
     + end
 
 We see that the security path essentially just forbids the presence of the
-type="yaml" attribute, by throwing an error if it is present.
+`type="yaml"` attribute, by throwing an error if it is present.
 
 Discussion
 ----------
@@ -614,8 +651,8 @@ We have so far seen that the parsing vulnerability was the result of a chain of
 smaller vulnerabilities.
 
 First of all, the fact that the frameworks default middleware stack provides
-automatic YAML serialization on all incoming POST requests seems like an
-apparent ﬂaw. When attempting to trace the origin of the YAML delegating code,
+automatic `YAML` serialization on all incoming `POST` requests seems like an
+apparent ﬂaw. When attempting to trace the origin of the `YAML` delegating code,
 it seems like it only existed in the ﬁrst case to support an edge case where
 Rails model classes needed to be automatically deserialized from incoming
 requests[^8].  
@@ -623,7 +660,7 @@ requests[^8].
 Another vulnerability that allowed the exploit to happen is the class
 NamedRouteCollection, which uses module_eval on untrusted data. It can however
 be argued that the creator of the method using module_eval did not intend for
-it to process untrusted data, and that it is the XML parser that violates this
+it to process untrusted data, and that it is the `XML` parser that violates this
 precondition by allowing a NamedRouteCollection to be instanced in such an
 arbitrary way.  
 
@@ -633,7 +670,7 @@ will shed some light on the issue of how a more secure parser could look like.
 
 ### Comparison with Haskell 
 
-In order to reason about the security implications of the YAML serialization,
+In order to reason about the security implications of the `YAML` serialization,
 we compare the code from the vulnerable version of Rails with equivalent code
 from another popular web development framework, namely Yesod.  
 
@@ -642,9 +679,9 @@ siginiﬁcantly higher level of type safety than Ruby. The question is, how woul
 this type safety have affected the vulnerability in question?  
 
 The benefit of explicit typing In Ruby, serialization and deserialization can
-very conveniently be done using YAML, it is even so convenient that YAML::load
+very conveniently be done using `YAML`, it is even so convenient that `YAML::load`
 can produce an arbitrary object from a string. The type of the object is
-described in the YAML markup contents and need not be known inside the
+described in the `YAML` markup contents and need not be known inside the
 deserializing code.
 
     # The deserialized type can be implicit
@@ -654,12 +691,12 @@ In Haskell, serialization and deserialization of arbitrary data can be done
 using the read and show functions. There is however a substantial difference
 from Ruby, which is that deserialization in Haskell requires knowledge of the
 type in advance. This means that in our case, we would have explicitly had to
-say that the deserialization of the XML in our malicious payload was to be
-interpreted as XML.
+say that the deserialization of the `XML` in our malicious payload was to be
+interpreted as `XML`.
 
     -- The deserialized type must be explicit 
     do contents <- readFile
-      "file" return $ (read contents) :: XML 
+      "file" return $ (read contents) :: `XML` 
       
 ### The benefit of being side-effect free
 
@@ -667,22 +704,22 @@ Haskell also provides another safety aspect through its type system: a possible
 guarantee that a function call is not allowed to result in side effects.  
 
 In Ruby, there is no way of reasoning about whether or not our call to from_xml
-will potentially result in unknown side-effects. For all we know, the XML
-document could contain a YAML document that upon deserialization causes the
-missiles to be launched. Since the from_xml method is untyped, there is no way
+will potentially result in unknown side-effects. For all we know, the `XML`
+document could contain a `YAML` document that upon deserialization causes the
+missiles to be launched. Since the `from_xml` method is untyped, there is no way
 of knowing what might happen when we call it.  
 
-Now consider one of the possible XML deserialization modules available to
-Yesod: HaXml.  HaXml deﬁnes the custom algebraic datatype Document that models
-XML documents, and a function xmlParse that converts Strings into such
-Documents. Look at the type of xmlParse:
+Now consider one of the possible `XML` deserialization modules available to
+Yesod: HaXml.  HaXml deﬁnes the custom algebraic datatype `Document` that models
+`XML` documents, and a function `xmlParse` that converts Strings into such
+Documents. Look at the type of `xmlParse`:
 
     xmlParse :: String -> String -> Document Posn 
 
 In Haskell, we know that the only way of side effects happening is if the
-computation is performed inside the IO-monad. Since xmlParse is not computed
-inside the IO monad, we can be certain that no missiles are launched upon
-parsing of XML documents.  
+computation is performed inside the `IO`-monad. Since `xmlParse` is not computed
+inside the `IO` monad, we can be certain that no missiles are launched upon
+parsing of `XML` documents.  
 
 Conclusions
 -----------
@@ -693,13 +730,13 @@ Ruby on Rails is a very convenient framework to work in. The system has been des
 
 ### Secure by default 
 
-It is a fact that without including a vulnerable XML parser into the
+It is a fact that without including a vulnerable `XML` parser into the
 application middleware by default, the severity of the vulnerability would have
-been mitigated. Then, only those who had explicitly enabled XML parsing would
+been mitigated. Then, only those who had explicitly enabled `XML` parsing would
 be vulnerable, but instead basically every Rails application on the internet
 was vulnerable.  The idiomatic way of preventing this would have been to
-disable the XML parser altogether by default, but the Rails developers instead
-chose to just disallow the type="yaml" attribute on XML documents.
+disable the `XML` parser altogether by default, but the Rails developers instead
+chose to just disallow the `type="yaml"` attribute on `XML` documents.
 
 ### Added security from type safety
 
@@ -709,9 +746,9 @@ deserialized data be known at runtime, and those that do not.
 
 Languages that that do enforce types of deserialized data to be explicitly
 speciﬁed can be argued to be more secure, since our exploit in question would
-not have been possible. Recall that class NamedRouteCollection depended on the
+not have been possible. Recall that the class `NamedRouteCollection` depended on the
 invariant that it must never handle untrusted data. By not specifying the type
-of the deserialized data, this invariant was broken.  
+of the deserialized data, this invariant was broken.
 
 It is however a fact that this type of deserialization provides a level of
 convenience and language-based expressiveness to the programmer that is not
