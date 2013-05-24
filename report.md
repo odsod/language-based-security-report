@@ -840,3 +840,22 @@ possible in a language with more restricted types.
 [5]:http://rubysource.com/anatomy-of-an-exploit-an-in-depth-look-at-the-rails-yaml-vulnerability/
 [6]:http://github.com/popular/starred
 [7]:https://community.rapid7.com/community/metasploit/blog/2013/01/09/serialization-mischief-in-ruby-land-cve-2013-0156
+
+Appendix
+--------
+
+### Contributions
+
+The major part of the work has been done together, including report writing,
+with Anders and Oscar being responsible for researching different areas:
+
+#### Oscar Söderlund
+
+* Creation of environment and exploit, with accompanying report sections
+* Comparisons with Haskell and accompanying report sections
+
+#### Anders Larsson
+
+* Background research on exploit, with accompanying report sections 
+* Parallels between the project and course related concepts, such as the principles of
+  security design.
