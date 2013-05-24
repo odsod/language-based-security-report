@@ -399,7 +399,6 @@ to be printed in the server console. From this we can conclude that by
 contstructing payloads containing a serialized `NamedRouteCollection`, we can
 have the application execute arbitrary code.
 
-
 Analysis
 --------
 
@@ -618,8 +617,8 @@ difference between the vulnerable version `3.2.10` and `3.2.11`:
     git diff v3.2.10 v3.2.11 
 
 Recall how the class method from_xml on the Hash class would delegate parsing
-of the tag content to the `YAML` parser if the attribute `type="yaml"` was present.
-This helps us understand the following diff:
+of the tag content to the `YAML` parser if the attribute `type="yaml"` was
+present.  This helps us understand the following diff:
 
     --- a/activesupport/lib/active_support/core_ext/hash/conversions.rb
     +++ b/activesupport/lib/active_support/core_ext/hash/conversions.rb
