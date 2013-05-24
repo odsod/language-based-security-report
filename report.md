@@ -22,7 +22,7 @@ application development. As the name suggests, it is implemented in Ruby.
 In February 2013, a critical vulnerability in the Ruby on Rails parameter
 parsing cababilities was discovered. This vulnerability, which among other
 things enabled remote code execution, has been called "the worst security issue
-that the Rails platform has seen to date".[^7]
+that the Rails platform has seen to date".[7]
 
 This report aims to investigate this vulnerability, and draw conclusions about
 what may have been the leading causes to its existence.
@@ -194,7 +194,7 @@ Ruby community.
 
 Aaron Patterson (Ruby on Rails developer)
 
-The vulnerability in questions was first described in a security bulletin[^1]
+The vulnerability in questions was first described in a security bulletin[1]
 by Aaron Patterson in January 2013. 
 
 Because of the severity of the problems found he suggests that applications
@@ -203,7 +203,7 @@ suggests different fixes depending on RoR version and what modules the
 application uses. One fix is to disable `YAML` type conversion when parsing `XML`.
 
 Many articles have been written on the subject after the initial post such as
-[^3], [^4], [^5]. [^3] talks about how the exploit affects websites using RoR
+[3], [4], [5]. [3] talks about how the exploit affects websites using RoR
 and even those that is connected to one, since a compromised server could be
 used by an attacker to perform cross-site scripting. The article also mentions
 that almost all servers running a RoR application at the time was affected,
@@ -223,11 +223,11 @@ Description of work
 
 ### Constructing a vulnerable environment
 
-According to Aaron Patterson's security bulletin[^1], all versions below
+According to Aaron Patterson's security bulletin[1], all versions below
 `3.2.11` are affected by the vulnerability. Constructing a vulnerable
 application thus requires version `3.2.10` or below.
 
-Another article on the subject[^2] points out that the version of Ruby needs to
+Another article on the subject[2] points out that the version of Ruby needs to
 be higher than `1.9.2`, we will thus use the latest patch of version `1.9.3`,
 which to date is `1.9.3-p392`.
 
@@ -280,7 +280,7 @@ We have now constructed a complete, runnable, vulnerable application.
 
 A concise example of the exploit is detailed in a blog entry by one of the
 members of *Rapid7*, creators of the popular exploit framework
-`Metasploit`[^7].
+`Metasploit`[7].
 
 By examining the provided `Metasploit`-module and other example exploits, we
 believe that the idea behind the exploit can be described as:
@@ -351,7 +351,7 @@ deserialization of this payload will result in the symbol table overflowing and
 the application crashing.
 
 Examples of this and many other attacks are provided by blogger under the alias
-*ronin*[^8].  Here is a simple example of a payload for a `DoS` attack:
+*ronin*[2].  Here is a simple example of a payload for a `DoS` attack:
 
     <?xml version="1.0" encoding="UTF-8"?>
     <exploit type="yaml">---:foo1: true
@@ -399,11 +399,12 @@ to be printed in the server console. From this we can conclude that by
 contstructing payloads containing a serialized `NamedRouteCollection`, we can
 have the application execute arbitrary code.
 
+Result
+------
 
-Analysis
---------
+### Analysis
 
-### Analysis of exploit
+#### Analysis of exploit
 
 Our final exploit payload looks like this in its entirety:
 
@@ -490,7 +491,7 @@ these properties mean and how the code in the key can end up being evaluated
 will be apparent upon analysis of the vulnerable code that processes this
 request.
 
-### Analysis of vulnerable code
+#### Analysis of vulnerable code
 
 How every request is handled by Rails is determined by the router, which maps
 URLs to controller method handlers. As we will see however, our request will
@@ -610,7 +611,7 @@ it to.
 
 We have thus successfully achieved remote code execution.
 
-### Analysis of security patches
+#### Analysis of security patches
 
 In order to understand how this vulnerability was patched, we look at the
 difference between the vulnerable version `3.2.10` and `3.2.11`: 
@@ -644,8 +645,7 @@ This helps us understand the following diff:
 We see that the security path essentially just forbids the presence of the
 `type="yaml"` attribute, by throwing an error if it is present.
 
-Discussion
-----------
+### Discussion
 
 We have so far seen that the parsing vulnerability was the result of a chain of
 smaller vulnerabilities.
@@ -655,7 +655,7 @@ automatic `YAML` serialization on all incoming `POST` requests seems like an
 apparent ﬂaw. When attempting to trace the origin of the `YAML` delegating code,
 it seems like it only existed in the ﬁrst case to support an edge case where
 Rails model classes needed to be automatically deserialized from incoming
-requests[^8].  
+requests[2].  
 
 Another vulnerability that allowed the exploit to happen is the class
 NamedRouteCollection, which uses module_eval on untrusted data. It can however
@@ -668,7 +668,7 @@ It seems that there is no obvious way to assign blame to one part of the
 system. By comparing the Rails parser with the parser of another framework, we
 will shed some light on the issue of how a more secure parser could look like.  
 
-### Comparison with Haskell 
+#### Comparison with Haskell 
 
 In order to reason about the security implications of the `YAML` serialization,
 we compare the code from the vulnerable version of Rails with equivalent code
@@ -698,7 +698,7 @@ interpreted as `XML`.
     do contents <- readFile
       "file" return $ (read contents) :: `XML` 
       
-### The benefit of being side-effect free
+#### The benefit of being side-effect free
 
 Haskell also provides another safety aspect through its type system: a possible
 guarantee that a function call is not allowed to result in side effects.  
@@ -722,13 +722,12 @@ inside the `IO` monad, we can be certain that no missiles are launched upon
 parsing of `XML` documents. There is a function called `unsafeperformIO` which
 theoretically could be used inside `xmlParse`, but this is highly unlikely.
 
-Conclusions
------------
+### Conclusions
 
 Taking the analysis into account, a conclusion has been made that Ruby on Rails
 has several security issues regarding its design choices. 
 
-### Risk analysis
+#### Risk analysis
 
 We have seen that Ruby and Ruby on Rails (when viewed as a web application DSL)
 are very high level languages. It may be possible that in these languages,
@@ -746,7 +745,7 @@ nature of Ruby may be a necessary tradeoff in order to meet a business goal. We
 see that this is the case by looking at the number of start-ups that choose to
 develop their web applications in Ruby on Rails.
 
-### Convention over configuration
+#### Convention over configuration
 
 Ruby on Rails is a very convenient framework to work in. The system has been
 designed such that a developer shouldn't need to make unnecessary
@@ -757,11 +756,11 @@ abandoned, then would the users abandon Ruby on Rails?
 
 When taking these questions into consideration, one might also question if
 there would be any users left if the platform is considered insecure. This may
-be why Aaron Pattersson emphasises in his post[^1] that it should now be more
+be why Aaron Pattersson emphasises in his post[1] that it should now be more
 "secure by default", after disabling the delegation to the `YAML` parser from the
 `XMLParser` in the default settings.
 
-### Secure by default 
+#### Secure by default 
 
 It is a fact that without including a vulnerable `XML` parser into the
 application middleware by default, the severity of the vulnerability would have
@@ -776,7 +775,7 @@ between "Convention over configuration" and "Secure by default", which will
 probably be a common balancing act in the development of Ruby on Rails in the
 future.
 
-### Principle of least privilege
+#### Principle of least privilege
 
 Our exploit show just how easy it is for a compromising vulnerability to lie
 dormant in a web application. In our case, the vulnerability allowed arbitrary
@@ -788,7 +787,7 @@ This means that we in our case could run the server under a user account which
 only has the specific permissions required to run our web application,
 including file system permissions limited to the confines of the server files.
 
-### Added security from type safety
+#### Added security from type safety
 
 From our comparison with Haskell, we can draw the following conclusion: there
 is a substantial difference between languages which enforces that the types of
@@ -804,11 +803,10 @@ It is however a fact that this type of deserialization provides a level of
 convenience and language-based expressiveness to the programmer that is not
 possible in a language with more restricted types.
 
-[^1]:https://groups.google.com/forum/#!topic/rubyonrails-security/61bkgvnSGTQ/discussion
-[^2]:http://ronin-ruby.github.io/blog/2013/01/09/rails-pocs.html
-[^3]:http://www.kalzumeus.com/2013/01/31/what-the-rails-security-issue-means-for-your-startup/
-[^4]:http://blog.codeclimate.com/blog/2013/01/10/rails-remote-code-execution-vulnerability-explained/
-[^5]:http://rubysource.com/anatomy-of-an-exploit-an-in-depth-look-at-the-rails-yaml-vulnerability/
-[^6]:http://github.com/popular/starred
-[^7]:https://community.rapid7.com/community/metasploit/blog/2013/01/09/serialization-mischief-in-ruby-land-cve-2013-0156
-[^8]:http://ronin-ruby.github.io/blog/2013/01/09/rails-pocs.html
+[1]:https://groups.google.com/forum/#!topic/rubyonrails-security/61bkgvnSGTQ/discussion
+[2]:http://ronin-ruby.github.io/blog/2013/01/09/rails-pocs.html
+[3]:http://www.kalzumeus.com/2013/01/31/what-the-rails-security-issue-means-for-your-startup/
+[4]:http://blog.codeclimate.com/blog/2013/01/10/rails-remote-code-execution-vulnerability-explained/
+[5]:http://rubysource.com/anatomy-of-an-exploit-an-in-depth-look-at-the-rails-yaml-vulnerability/
+[6]:http://github.com/popular/starred
+[7]:https://community.rapid7.com/community/metasploit/blog/2013/01/09/serialization-mischief-in-ruby-land-cve-2013-0156
