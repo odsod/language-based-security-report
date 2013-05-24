@@ -786,6 +786,10 @@ including file system permissions limited to the confines of the server files.
 Taking the analysis into account, a conclusion has been made that Ruby on Rails
 has several security issues regarding its design choices. To survive in the future, Ruby on Rails will need to make sure that its security issues are kept at a low severity level, otherwise developers will start looking for alternatives.
 
+#### Design principles
+
+When it comes to design principles we have seen that what principles you choose to follow may have impact on the system vulnerability as a whole. The "convenience over configuration" seem to have opened security holes and as an effect, "security by default" is now considered also. The principle of least privilege can help in order to constrain the security issues, but this is more in the range of OS-based security. What RoR can do however, is to apply security principles more often.
+
 #### Added security from type safety
 
 From our comparison with Haskell, we can draw the following conclusion: there
