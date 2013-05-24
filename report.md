@@ -194,7 +194,7 @@ Ruby community.
 
 Aaron Patterson (Ruby on Rails developer)
 
-The vulnerability in questions was first described in a security bulletin[1]
+The vulnerability in question was first described in a security bulletin[1]
 by Aaron Patterson in January 2013. 
 
 Because of the severity of the problems found he suggests that applications
@@ -202,8 +202,7 @@ running an affected release should be upgraded or fixed immediately. The post
 suggests different fixes depending on RoR version and what modules the
 application uses. One fix is to disable `YAML` type conversion when parsing `XML`.
 
-Many articles have been written on the subject after the initial post such as
-[3], [4], [5]. [3] talks about how the exploit affects websites using RoR
+Many articles have been written on the subject after the initial post such as[3],[4],[5]. [3] talks about how the exploit affects websites using RoR
 and even those that is connected to one, since a compromised server could be
 used by an attacker to perform cross-site scripting. The article also mentions
 that almost all servers running a RoR application at the time was affected,
@@ -400,7 +399,7 @@ contstructing payloads containing a serialized `NamedRouteCollection`, we can
 have the application execute arbitrary code.
 
 Result
-------
+------  
 
 ### Analysis
 
@@ -675,7 +674,7 @@ we compare the code from the vulnerable version of Rails with equivalent code
 from another popular web development framework, namely Yesod.  
 
 Yesod is implemented in Haskell, which means that the host language provides a
-siginiﬁcantly higher level of type safety than Ruby. The question is, how would
+signiﬁcantly higher level of type safety than Ruby. The question is, how would
 this type safety have affected the vulnerability in question?  
 
 The benefit of explicit typing In Ruby, serialization and deserialization can
@@ -721,11 +720,6 @@ computation is performed inside the `IO`-monad. Since `xmlParse` is not computed
 inside the `IO` monad, we can be certain that no missiles are launched upon
 parsing of `XML` documents. There is a function called `unsafeperformIO` which
 theoretically could be used inside `xmlParse`, but this is highly unlikely.
-
-### Conclusions
-
-Taking the analysis into account, a conclusion has been made that Ruby on Rails
-has several security issues regarding its design choices. 
 
 #### Risk analysis
 
@@ -786,6 +780,11 @@ privilege”.
 This means that we in our case could run the server under a user account which
 only has the specific permissions required to run our web application,
 including file system permissions limited to the confines of the server files.
+
+### Conclusions
+
+Taking the analysis into account, a conclusion has been made that Ruby on Rails
+has several security issues regarding its design choices. To survive in the future, Ruby on Rails will need to make sure that its security issues are kept at a low severity level, otherwise developers will start looking for alternatives.
 
 #### Added security from type safety
 
