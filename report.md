@@ -282,8 +282,16 @@ A concise example of the exploit is detailed in a blog entry by one of the
 members of *Rapid7*, creators of the popular exploit framework
 `Metasploit`[^7].
 
-By sending the following payload in a `POST`-request, the `Time` object
-described as `YAML` will be deserialized and evaluated:
+By examining the provided `Metasploit`-module and other example exploits, we
+believe that the idea behind the exploit can be described as:
+
+Send a `POST` request with an `XML` body to the server. The `XML` should
+contain one single tag, with a `type=yaml` attribute.  Any `YAML` inside this
+tag will then be deserialized within the context of the application runtime.
+
+As an example, sending the following payload in a `POST`-request to the
+application should result in the `Time` object described as `YAML` being
+deserialized and evaluated:
 
     <?xml version="1.0" encoding="UTF-8"?>
     <exploit type="yaml">--- !ruby/object:Time {}
